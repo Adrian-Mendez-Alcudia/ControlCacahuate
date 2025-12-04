@@ -1,1 +1,194 @@
-<p>produccion works!</p>
+<div class="produccion-container">
+  <header class="header">
+    <h1>📦 Producción</h1>
+    <p class="subtitle">Registra tus lotes de empaquetado</p>
+  </header>
+
+  <!-- Mensaje -->
+  @if (mensaje) {
+  <div class="mensaje">{{ mensaje }}</div>
+  }
+
+  <!-- Botón nuevo lote -->
+  <button class="btn-nuevo-lote" (click)="abrirModal()">
+    ➕ Registrar Nuevo Lote
+  </button>
+
+  <!-- Inventario actual -->
+  <section class="seccion">
+    <h2>📊 Inventario Actual</h2>
+
+    @if (saboresConInventario$ | async; as sabores) { @if (sabores.length === 0)
+    {
+    <div class="empty-state">
+      <p>No hay sabores configurados</p>
+      <p class="hint">Ve a Config para agregar sabores</p>
+    </div>
+    } @else {
+    <div class="inventario-lista">
+      @for (sabor of sabores; track sabor.id) {
+      <div class="inventario-item" [style.--sabor-color]="sabor.color">
+        <div class="sabor-info">
+          <span class="emoji">{{ sabor.emoji }}</span>
+          <span class="nombre">{{ sabor.nombre }}</span>
+        </div>
+        <div class="sabor-stats">
+          <div class="cantidad">{{ sabor.cantidad }} bolsas</div>
+          @if (sabor.costoPromedio > 0) {
+          <div class="costo">{{ formatearMoneda(sabor.costoPromedio) }}/u</div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+    } } @else {
+    <div class="loading">Cargando...</div>
+    }
+  </section>
+
+  <!-- Últimos lotes -->
+  <section class="seccion">
+    <h2>🕐 Últimos Lotes</h2>
+
+    @if (lotes$ | async; as lotes) { @if (sabores$ | async; as sabores) { @if
+    (lotes.length === 0) {
+    <div class="empty-state">
+      <p>Aún no hay lotes registrados</p>
+    </div>
+    } @else {
+    <div class="lotes-lista">
+      @for (lote of lotes.slice(0, 10); track lote.id) {
+      <div
+        class="lote-item"
+        [style.--sabor-color]="getSaborColor(lote.saborId, sabores)"
+      >
+        <div class="lote-header">
+          <span class="lote-sabor">
+            {{ getSaborEmoji(lote.saborId, sabores) }}
+            {{ getSaborNombre(lote.saborId, sabores) }}
+          </span>
+          <span class="lote-fecha">
+            {{ lote.fechaProduccion.toDate() | date : "dd/MM/yy" }}
+          </span>
+        </div>
+        <div class="lote-detalles">
+          <span class="lote-info">
+            {{ lote.bolsasResultantes }} bolsas de
+            {{ formatearMoneda(lote.costoKilo) }}/kg
+          </span>
+          <span class="lote-costo">
+            {{ formatearMoneda(lote.costoUnitario) }}/u
+          </span>
+        </div>
+        @if (lote.notas) {
+        <div class="lote-notas">📝 {{ lote.notas }}</div>
+        }
+      </div>
+      }
+    </div>
+    } } } @else {
+    <div class="loading">Cargando...</div>
+    }
+  </section>
+</div>
+
+<!-- Modal Nuevo Lote -->
+@if (modalVisible) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2>📦 Nuevo Lote de Producción</h2>
+
+    <!-- Selector de sabor -->
+    <div class="form-group">
+      <label>Sabor</label>
+      <select [(ngModel)]="nuevoLote.saborId">
+        <option value="">Selecciona un sabor</option>
+        @if (sabores$ | async; as sabores) { @for (sabor of sabores; track
+        sabor.id) {
+        <option [value]="sabor.id">{{ sabor.emoji }} {{ sabor.nombre }}</option>
+        } }
+      </select>
+    </div>
+
+    <!-- Costo del kilo -->
+    <div class="form-group">
+      <label>¿Cuánto costó el kilo?</label>
+      <div class="input-prefix">
+        <span class="prefix">$</span>
+        <input
+          type="number"
+          [(ngModel)]="nuevoLote.costoKilo"
+          (ngModelChange)="calcularCostos()"
+          placeholder="100"
+          min="1"
+        />
+      </div>
+    </div>
+
+    <!-- Bolsas resultantes -->
+    <div class="form-group">
+      <label>¿Cuántas bolsitas salieron?</label>
+      <input
+        type="number"
+        [(ngModel)]="nuevoLote.bolsasResultantes"
+        (ngModelChange)="calcularCostos()"
+        placeholder="15"
+        min="1"
+        class="text-center"
+      />
+    </div>
+
+    <!-- Notas -->
+    <div class="form-group">
+      <label>Notas (opcional)</label>
+      <input
+        type="text"
+        [(ngModel)]="nuevoLote.notas"
+        placeholder="Ej: Kilo del mercado nuevo"
+      />
+    </div>
+
+    <!-- Cálculos en tiempo real -->
+    @if (costoUnitarioCalculado > 0) {
+    <div class="calculos-preview">
+      <div class="calculo-principal">
+        <span class="calculo-label">COSTO POR BOLSA</span>
+        <span class="calculo-valor">{{
+          formatearMoneda(costoUnitarioCalculado)
+        }}</span>
+      </div>
+      <div class="calculos-secundarios">
+        <div class="calculo">
+          <span class="label">Utilidad/u</span>
+          <span class="valor" [class.negativo]="utilidadPorBolsa < 0">
+            {{ formatearMoneda(utilidadPorBolsa) }}
+          </span>
+        </div>
+        <div class="calculo">
+          <span class="label">Margen</span>
+          <span class="valor" [class.negativo]="margenPorcentaje < 0">
+            {{ margenPorcentaje }}%
+          </span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- Botones -->
+    <button
+      class="btn-guardar"
+      (click)="guardarLote()"
+      [disabled]="
+        !nuevoLote.saborId ||
+        !nuevoLote.costoKilo ||
+        !nuevoLote.bolsasResultantes ||
+        guardando
+      "
+    >
+      ✓ Registrar Lote
+    </button>
+
+    <button class="btn-cancelar" (click)="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+}

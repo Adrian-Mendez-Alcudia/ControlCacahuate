@@ -1,1 +1,172 @@
-<p>configuracion works!</p>
+<div class="config-container">
+  <header class="header">
+    <h1>⚙️ Configuración</h1>
+    <p class="subtitle">Personaliza tu negocio</p>
+  </header>
+
+  <!-- Mensaje -->
+  @if (mensaje) {
+  <div class="mensaje">{{ mensaje }}</div>
+  }
+
+  <!-- Configuración General -->
+  <section class="seccion">
+    <h2>🏪 Negocio</h2>
+
+    <div class="form-group">
+      <label>Nombre del negocio</label>
+      <div class="input-con-boton">
+        <input
+          type="text"
+          [(ngModel)]="nombreNegocio"
+          placeholder="Mi Negocio"
+        />
+        <button (click)="guardarNombre()" [disabled]="guardando">
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Precio de venta por bolsa</label>
+      <div class="input-con-boton">
+        <input type="number" [(ngModel)]="precioVenta" min="1" step="0.5" />
+        <button (click)="guardarPrecio()" [disabled]="guardando">
+          Guardar
+        </button>
+      </div>
+      <span class="hint">Este será el precio por defecto al vender</span>
+    </div>
+  </section>
+
+  <!-- Sabores -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>🍬 Sabores</h2>
+      <button class="btn-agregar" (click)="abrirModalNuevoSabor()">
+        + Nuevo
+      </button>
+    </div>
+
+    <div class="sabores-lista">
+      @if (sabores$ | async; as sabores) { @if (sabores.length === 0) {
+      <div class="empty-state">
+        <p>No hay sabores configurados</p>
+        <p class="hint">Agrega tu primer sabor para empezar</p>
+      </div>
+      } @else { @for (sabor of sabores; track sabor.id) {
+      <div
+        class="sabor-item"
+        [class.inactivo]="!sabor.activo"
+        [style.--sabor-color]="sabor.color"
+      >
+        <div class="sabor-info">
+          <span class="emoji">{{ sabor.emoji }}</span>
+          <span class="nombre">{{ sabor.nombre }}</span>
+          @if (!sabor.activo) {
+          <span class="badge-inactivo">Inactivo</span>
+          }
+        </div>
+        <div class="sabor-acciones">
+          <button
+            class="btn-icon"
+            (click)="abrirModalEditarSabor(sabor)"
+            title="Editar"
+          >
+            ✏️
+          </button>
+          <button
+            class="btn-icon"
+            (click)="toggleActivoSabor(sabor)"
+            [title]="sabor.activo ? 'Desactivar' : 'Activar'"
+          >
+            {{ sabor.activo ? "👁️" : "👁️‍🗨️" }}
+          </button>
+          <button
+            class="btn-icon btn-eliminar"
+            (click)="eliminarSabor(sabor)"
+            title="Eliminar"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+      } } } @else {
+      <div class="loading">Cargando...</div>
+      }
+    </div>
+  </section>
+</div>
+
+<!-- Modal Sabor -->
+@if (modalSaborVisible) {
+<div class="modal-overlay" (click)="cerrarModalSabor()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2>{{ editandoSabor ? "✏️ Editar Sabor" : "🍬 Nuevo Sabor" }}</h2>
+
+    <div class="form-group">
+      <label>Nombre del sabor</label>
+      <input
+        type="text"
+        [(ngModel)]="nuevoSabor.nombre"
+        placeholder="Ej: Japonés, Enchilado..."
+      />
+    </div>
+
+    <div class="form-group">
+      <label>Emoji</label>
+      <div class="emoji-selector">
+        @for (emoji of emojisDisponibles; track emoji) {
+        <button
+          class="emoji-btn"
+          [class.selected]="nuevoSabor.emoji === emoji"
+          (click)="seleccionarEmoji(emoji)"
+        >
+          {{ emoji }}
+        </button>
+        }
+      </div>
+      <input
+        type="text"
+        [(ngModel)]="nuevoSabor.emoji"
+        maxlength="2"
+        class="emoji-input"
+        placeholder="O escribe uno"
+      />
+    </div>
+
+    <div class="form-group">
+      <label>Color</label>
+      <div class="color-selector">
+        @for (color of coloresDisponibles; track color) {
+        <button
+          class="color-btn"
+          [class.selected]="nuevoSabor.color === color"
+          [style.background]="color"
+          (click)="seleccionarColor(color)"
+        ></button>
+        }
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview">
+      <label>Vista previa</label>
+      <div class="preview-sabor" [style.--sabor-color]="nuevoSabor.color">
+        <span class="emoji">{{ nuevoSabor.emoji }}</span>
+        <span class="nombre">{{ nuevoSabor.nombre || "Nombre" }}</span>
+      </div>
+    </div>
+
+    <button
+      class="btn-guardar"
+      (click)="guardarSabor()"
+      [disabled]="!nuevoSabor.nombre.trim() || guardando"
+    >
+      {{ editandoSabor ? "Actualizar" : "Crear Sabor" }}
+    </button>
+
+    <button class="btn-cancelar" (click)="cerrarModalSabor()">Cancelar</button>
+  </div>
+</div>
+}

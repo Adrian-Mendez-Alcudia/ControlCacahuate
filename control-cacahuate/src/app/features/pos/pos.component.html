@@ -1,1 +1,133 @@
-<p>pos works!</p>
+<div class="pos-container">
+  <!-- Header -->
+  <header class="header">
+    <h1>🥜 Control Cacahuate</h1>
+    <p class="subtitle">Toca un sabor para vender</p>
+  </header>
+
+  <!-- Mensaje de feedback -->
+  @if (mensaje) {
+  <div class="mensaje">{{ mensaje }}</div>
+  }
+
+  <!-- Grid de sabores -->
+  <div class="sabores-grid">
+    @if (saboresConInventario$ | async; as sabores) { @if (sabores.length === 0)
+    {
+    <div class="empty-state">
+      <p>No hay sabores configurados</p>
+      <p class="hint">Ve a Configuración para agregar sabores</p>
+    </div>
+    } @else { @for (sabor of sabores; track sabor.id) {
+    <button
+      class="sabor-btn"
+      [class.sin-stock]="sabor.cantidad <= 0"
+      [style.--sabor-color]="sabor.color"
+      (click)="abrirModalPago(sabor)"
+    >
+      <span class="emoji">{{ sabor.emoji }}</span>
+      <span class="nombre">{{ sabor.nombre }}</span>
+      <span class="stock" [class.agotado]="sabor.cantidad <= 0">
+        {{ sabor.cantidad }} disponibles
+      </span>
+      <span class="precio">{{ formatearMoneda(precioVenta) }}</span>
+    </button>
+    } } } @else {
+    <div class="loading">Cargando...</div>
+    }
+  </div>
+
+  <!-- Resumen del día -->
+  <div class="resumen-dia">
+    <h3>Resumen del día</h3>
+    <div class="resumen-row">
+      <span>💵 Efectivo:</span>
+      <span class="efectivo">{{ formatearMoneda(efectivoHoy) }}</span>
+    </div>
+    <div class="resumen-row">
+      <span>📝 Fiado hoy:</span>
+      <span class="fiado">{{ formatearMoneda(fiadoHoy) }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de pago -->
+@if (modalVisible && saborSeleccionado) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2>¿Cómo paga?</h2>
+    <p class="modal-sabor">
+      {{ saborSeleccionado.emoji }} {{ saborSeleccionado.nombre }} -
+      {{ formatearMoneda(precioVenta) }}
+    </p>
+
+    <!-- Botón efectivo -->
+    <button
+      class="btn-efectivo"
+      (click)="venderEfectivo()"
+      [disabled]="procesando"
+    >
+      💵 Efectivo
+    </button>
+
+    <!-- Sección fiado -->
+    <div class="seccion-fiado">
+      <p class="fiado-label">📝 Fiado - Selecciona cliente:</p>
+
+      @if (clientes$ | async; as clientes) {
+      <div class="clientes-lista">
+        @for (cliente of clientes; track cliente.id) {
+        <button
+          class="cliente-btn"
+          (click)="venderFiado(cliente)"
+          [disabled]="procesando"
+        >
+          <span>{{ cliente.alias }}</span>
+          <span class="deuda" [class.tiene-deuda]="cliente.saldoPendiente > 0">
+            {{ formatearMoneda(cliente.saldoPendiente) }}
+          </span>
+        </button>
+        }
+      </div>
+      }
+
+      <button class="btn-nuevo-cliente" (click)="abrirModalNuevoCliente()">
+        + Nuevo cliente
+      </button>
+    </div>
+
+    <button class="btn-cancelar" (click)="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+}
+
+<!-- Modal nuevo cliente -->
+@if (modalNuevoCliente) {
+<div class="modal-overlay" (click)="cerrarModalNuevoCliente()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2>👤 Nuevo Cliente</h2>
+
+    <div class="form-group">
+      <label>Nombre o alias</label>
+      <input
+        type="text"
+        [(ngModel)]="nuevoClienteAlias"
+        placeholder="Ej: Juan Mecánico"
+        (keyup.enter)="crearClienteYFiar()"
+      />
+    </div>
+
+    <button
+      class="btn-efectivo"
+      (click)="crearClienteYFiar()"
+      [disabled]="!nuevoClienteAlias.trim() || procesando"
+    >
+      ✓ Crear y Fiar
+    </button>
+
+    <button class="btn-cancelar" (click)="cerrarModalNuevoCliente()">
+      Cancelar
+    </button>
+  </div>
+</div>
+}

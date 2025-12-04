@@ -1,1 +1,8 @@
-<p>bottom-nav works!</p>
+<nav class="bottom-nav">
+  @for (item of navItems; track item.path) {
+  <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
+    <span class="icon">{{ item.icon }}</span>
+    <span class="label">{{ item.label }}</span>
+  </a>
+  }
+</nav>
