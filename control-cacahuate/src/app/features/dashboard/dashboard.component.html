@@ -1,1 +1,126 @@
-<p>dashboard works!</p>
+<div class="dashboard-container">
+  <header class="header">
+    <h1>📊 Dashboard</h1>
+    <p class="subtitle">{{ nombreNegocio }}</p>
+  </header>
+
+  @if (resumen$ | async; as resumen) {
+  <!-- KPIs principales -->
+  <div class="kpis-grid">
+    <div class="kpi-card efectivo">
+      <span class="kpi-icon">💵</span>
+      <span class="kpi-label">Efectivo Hoy</span>
+      <span class="kpi-valor">{{ formatearMoneda(resumen.efectivoHoy) }}</span>
+    </div>
+
+    <div class="kpi-card utilidad">
+      <span class="kpi-icon">📈</span>
+      <span class="kpi-label">Utilidad Hoy</span>
+      <span class="kpi-valor" [class.negativo]="resumen.utilidadHoy < 0">
+        {{ formatearMoneda(resumen.utilidadHoy) }}
+      </span>
+    </div>
+
+    <div class="kpi-card inventario">
+      <span class="kpi-icon">📦</span>
+      <span class="kpi-label">Valor Inventario</span>
+      <span class="kpi-valor">{{
+        formatearMoneda(resumen.valorInventario)
+      }}</span>
+      <span class="kpi-detalle">{{ resumen.totalBolsas }} bolsas</span>
+    </div>
+
+    <div class="kpi-card calle">
+      <span class="kpi-icon">🏃</span>
+      <span class="kpi-label">En la Calle</span>
+      <span class="kpi-valor">{{
+        formatearMoneda(resumen.dineroEnCalle)
+      }}</span>
+      <span class="kpi-detalle">{{ resumen.clientesConDeuda }} clientes</span>
+    </div>
+  </div>
+
+  <!-- Rendimiento -->
+  <section class="seccion rendimiento-seccion">
+    <h2>⚡ Rendimiento de Producción</h2>
+    <div class="rendimiento-contenido">
+      <div class="rendimiento-principal">
+        <span class="numero">{{ resumen.rendimientoPromedio || "—" }}</span>
+        <span class="texto">bolsas promedio por kilo</span>
+      </div>
+      @if (lotes$ | async; as lotes) { @if (lotes.length > 0) {
+      <div class="rendimiento-stats">
+        <div class="stat">
+          <span class="label">Mejor</span>
+          <span class="valor mejor">{{ getBestRendimiento(lotes) }}</span>
+        </div>
+        <div class="stat">
+          <span class="label">Peor</span>
+          <span class="valor peor">{{ getWorstRendimiento(lotes) }}</span>
+        </div>
+        <div class="stat">
+          <span class="label">Lotes</span>
+          <span class="valor">{{ lotes.length }}</span>
+        </div>
+      </div>
+      } }
+    </div>
+  </section>
+
+  <!-- Desglose del día -->
+  <section class="seccion">
+    <h2>📋 Desglose del Día</h2>
+    <div class="desglose-lista">
+      <div class="desglose-item">
+        <span class="label">Ventas efectivo:</span>
+        <span class="valor positivo">{{
+          formatearMoneda(resumen.ventasEfectivoHoy)
+        }}</span>
+      </div>
+      <div class="desglose-item">
+        <span class="label">Abonos recibidos:</span>
+        <span class="valor positivo">{{
+          formatearMoneda(resumen.abonosHoy)
+        }}</span>
+      </div>
+      <div class="desglose-item">
+        <span class="label">Ventas fiadas:</span>
+        <span class="valor fiado">{{
+          formatearMoneda(resumen.ventasFiadoHoy)
+        }}</span>
+      </div>
+      <div class="desglose-item separador">
+        <span class="label">Costo de lo vendido:</span>
+        <span class="valor negativo"
+          >-{{ formatearMoneda(resumen.costoVendidoHoy) }}</span
+        >
+      </div>
+    </div>
+  </section>
+
+  <!-- Resumen financiero -->
+  <section class="seccion resumen-financiero">
+    <h2>💰 Resumen Financiero</h2>
+    <div class="financiero-grid">
+      <div class="financiero-item">
+        <span class="label">Capital en inventario</span>
+        <span class="valor">{{
+          formatearMoneda(resumen.valorInventario)
+        }}</span>
+      </div>
+      <div class="financiero-item">
+        <span class="label">Capital en calle (fiados)</span>
+        <span class="valor">{{ formatearMoneda(resumen.dineroEnCalle) }}</span>
+      </div>
+      <div class="financiero-item total">
+        <span class="label">Capital total trabajando</span>
+        <span class="valor">{{
+          formatearMoneda(resumen.valorInventario + resumen.dineroEnCalle)
+        }}</span>
+      </div>
+    </div>
+  </section>
+  } @else {
+  <div class="loading">Cargando datos...</div>
+  }
+</div>

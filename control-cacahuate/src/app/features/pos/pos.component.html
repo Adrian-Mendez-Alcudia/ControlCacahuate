@@ -2,12 +2,12 @@
   <!-- Header -->
   <header class="header">
     <h1>🥜 Control Cacahuate</h1>
-    <p class="subtitle">Toca un sabor para vender</p>
+    <p class="subtitle">Toca los sabores para agregar al carrito</p>
   </header>
 
   <!-- Mensaje de feedback -->
   @if (mensaje) {
-  <div class="mensaje">{{ mensaje }}</div>
+  <div class="mensaje" [class.error]="mensajeError">{{ mensaje }}</div>
   }
 
   <!-- Grid de sabores -->
@@ -15,29 +15,37 @@
     @if (saboresConInventario$ | async; as sabores) { @if (sabores.length === 0)
     {
     <div class="empty-state">
+      <span class="emoji">🥜</span>
       <p>No hay sabores configurados</p>
-      <p class="hint">Ve a Configuración para agregar sabores</p>
+      <p class="hint">Ve a <strong>Config</strong> para agregar tus sabores</p>
     </div>
     } @else { @for (sabor of sabores; track sabor.id) {
     <button
       class="sabor-btn"
       [class.sin-stock]="sabor.cantidad <= 0"
       [style.--sabor-color]="sabor.color"
-      (click)="abrirModalPago(sabor)"
+      (click)="agregarAlCarrito(sabor)"
     >
+      <!-- Badge de cantidad en carrito -->
+      @if (getCantidadEnCarrito(sabor.id) > 0) {
+      <span class="badge-cantidad">{{ getCantidadEnCarrito(sabor.id) }}</span>
+      }
+
       <span class="emoji">{{ sabor.emoji }}</span>
       <span class="nombre">{{ sabor.nombre }}</span>
       <span class="stock" [class.agotado]="sabor.cantidad <= 0">
-        {{ sabor.cantidad }} disponibles
+        @if (sabor.cantidad > 0) {
+        {{ sabor.cantidad }} disponibles } @else { Sin stock }
       </span>
       <span class="precio">{{ formatearMoneda(precioVenta) }}</span>
     </button>
     } } } @else {
-    <div class="loading">Cargando...</div>
+    <div class="loading">Cargando sabores...</div>
     }
   </div>
 
-  <!-- Resumen del día -->
+  <!-- Resumen del día (Visible solo si no hay carrito activo) -->
+  @if (carrito.length === 0) {
   <div class="resumen-dia">
     <h3>Resumen del día</h3>
     <div class="resumen-row">
@@ -49,17 +57,58 @@
       <span class="fiado">{{ formatearMoneda(fiadoHoy) }}</span>
     </div>
   </div>
+  }
 </div>
 
-<!-- Modal de pago -->
-@if (modalVisible && saborSeleccionado) {
+<!-- Barra de Cobro Flotante -->
+@if (carrito.length > 0) {
+<div class="barra-cobro">
+  <div class="info-cobro">
+    <span class="items-count">{{ cantidadTotalItems }} artículos</span>
+    <span class="total">{{ formatearMoneda(totalCarrito) }}</span>
+  </div>
+  <button class="btn-ver-cobrar" (click)="abrirModalCobrar()">
+    Ver / Cobrar
+  </button>
+</div>
+}
+
+<!-- Modal de Cobro (Carrito) -->
+@if (modalCobroVisible) {
 <div class="modal-overlay" (click)="cerrarModal()">
   <div class="modal" (click)="$event.stopPropagation()">
-    <h2>¿Cómo paga?</h2>
-    <p class="modal-sabor">
-      {{ saborSeleccionado.emoji }} {{ saborSeleccionado.nombre }} -
-      {{ formatearMoneda(precioVenta) }}
-    </p>
+    <h2>🛒 Tu Pedido</h2>
+
+    <!-- Lista de items en carrito -->
+    <div class="carrito-lista">
+      @for (item of carrito; track item.sabor.id) {
+      <div class="carrito-item">
+        <div class="info-item">
+          <span class="emoji">{{ item.sabor.emoji }}</span>
+          <span class="nombre">{{ item.sabor.nombre }}</span>
+        </div>
+        <div class="controles-cantidad">
+          <button class="btn-qty" (click)="restarDelCarrito(item.sabor)">
+            -
+          </button>
+          <span class="qty">{{ item.cantidad }}</span>
+          <button class="btn-qty" (click)="agregarAlCarrito(item.sabor)">
+            +
+          </button>
+        </div>
+        <div class="subtotal">
+          {{ formatearMoneda(item.cantidad * precioVenta) }}
+        </div>
+      </div>
+      }
+    </div>
+
+    <div class="total-final">
+      <span>Total a Pagar:</span>
+      <span class="monto">{{ formatearMoneda(totalCarrito) }}</span>
+    </div>
+
+    <h3 class="metodo-pago-titulo">Selecciona método de pago:</h3>
 
     <!-- Botón efectivo -->
     <button
@@ -96,7 +145,12 @@
       </button>
     </div>
 
-    <button class="btn-cancelar" (click)="cerrarModal()">Cancelar</button>
+    <button class="btn-cancelar" (click)="limpiarCarrito()">
+      🗑️ Vaciar Carrito y Cancelar
+    </button>
+    <button class="btn-cancelar-simple" (click)="cerrarModal()">
+      Seguir comprando
+    </button>
   </div>
 </div>
 }
@@ -122,7 +176,7 @@
       (click)="crearClienteYFiar()"
       [disabled]="!nuevoClienteAlias.trim() || procesando"
     >
-      ✓ Crear y Fiar
+      ✓ Crear y Fiar Pedido
     </button>
 
     <button class="btn-cancelar" (click)="cerrarModalNuevoCliente()">

@@ -15,6 +15,11 @@ interface SaborConInventario extends Sabor {
   costoPromedio: number;
 }
 
+interface ItemCarrito {
+  sabor: SaborConInventario;
+  cantidad: number;
+}
+
 @Component({
   selector: 'app-pos',
   standalone: true,
@@ -36,10 +41,9 @@ export class PosComponent implements OnInit {
   efectivoHoy = 0;
   fiadoHoy = 0;
 
-  // Modal de pago
-  modalVisible = false;
-  saborSeleccionado: SaborConInventario | null = null;
-  clienteSeleccionado: Cliente | null = null;
+  // Carrito de compras
+  carrito: ItemCarrito[] = [];
+  modalCobroVisible = false;
 
   // Modal nuevo cliente
   modalNuevoCliente = false;
@@ -48,6 +52,7 @@ export class PosComponent implements OnInit {
   // Estado de carga
   procesando = false;
   mensaje = '';
+  mensajeError = false;
 
   ngOnInit() {
     // Combinar sabores con inventario
@@ -89,58 +94,79 @@ export class PosComponent implements OnInit {
     return formatearMoneda(valor);
   }
 
-  abrirModalPago(sabor: SaborConInventario) {
-    if (sabor.cantidad <= 0) {
-      this.mostrarMensaje('Sin stock disponible', true);
+  // ========== LÓGICA DEL CARRITO ==========
+
+  agregarAlCarrito(sabor: SaborConInventario) {
+    const index = this.carrito.findIndex((i) => i.sabor.id === sabor.id);
+    const cantidadActual = index !== -1 ? this.carrito[index].cantidad : 0;
+
+    if (cantidadActual >= sabor.cantidad) {
+      this.mostrarMensaje('No hay suficiente stock', true);
       return;
     }
-    this.saborSeleccionado = sabor;
-    this.modalVisible = true;
+
+    if (index !== -1) {
+      // Actualizamos creando un nuevo objeto para asegurar detección de cambios
+      const item = { ...this.carrito[index] };
+      item.cantidad++;
+      const nuevoCarrito = [...this.carrito];
+      nuevoCarrito[index] = item;
+      this.carrito = nuevoCarrito;
+    } else {
+      // Agregamos al array creando una nueva referencia
+      this.carrito = [...this.carrito, { sabor, cantidad: 1 }];
+    }
+  }
+
+  restarDelCarrito(sabor: SaborConInventario) {
+    const index = this.carrito.findIndex((i) => i.sabor.id === sabor.id);
+    if (index !== -1) {
+      const item = { ...this.carrito[index] };
+      item.cantidad--;
+
+      const nuevoCarrito = [...this.carrito];
+      if (item.cantidad <= 0) {
+        nuevoCarrito.splice(index, 1);
+      } else {
+        nuevoCarrito[index] = item;
+      }
+      this.carrito = nuevoCarrito;
+    }
+  }
+
+  getCantidadEnCarrito(saborId: string): number {
+    const item = this.carrito.find((i) => i.sabor.id === saborId);
+    return item ? item.cantidad : 0;
+  }
+
+  get totalCarrito(): number {
+    return this.carrito.reduce(
+      (total, item) => total + item.cantidad * this.precioVenta,
+      0
+    );
+  }
+
+  get cantidadTotalItems(): number {
+    return this.carrito.reduce((total, item) => total + item.cantidad, 0);
+  }
+
+  limpiarCarrito() {
+    this.carrito = [];
+    this.cerrarModal();
+  }
+
+  // ========== MODALES ==========
+
+  abrirModalCobrar() {
+    if (this.carrito.length === 0) {
+      this.mostrarMensaje('El carrito está vacío', true);
+      return;
+    }
+    this.modalCobroVisible = true;
   }
 
   cerrarModal() {
-    this.modalVisible = false;
-    this.saborSeleccionado = null;
-    this.clienteSeleccionado = null;
-  }
-
-  async venderEfectivo() {
-    if (!this.saborSeleccionado || this.procesando) return;
-
-    this.procesando = true;
-    const resultado = await this.ventasService.procesarVenta({
-      saborId: this.saborSeleccionado.id,
-      tipoPago: 'efectivo',
-      precioVenta: this.precioVenta,
-    });
-
-    if (resultado.success) {
-      this.mostrarMensaje('¡Venta registrada!');
-      this.cerrarModal();
-    } else {
-      this.mostrarMensaje(resultado.error || 'Error al procesar', true);
-    }
-    this.procesando = false;
-  }
-
-  async venderFiado(cliente: Cliente) {
-    if (!this.saborSeleccionado || this.procesando) return;
-
-    this.procesando = true;
-    const resultado = await this.ventasService.procesarVenta({
-      saborId: this.saborSeleccionado.id,
-      tipoPago: 'fiado',
-      clienteId: cliente.id,
-      precioVenta: this.precioVenta,
-    });
-
-    if (resultado.success) {
-      this.mostrarMensaje(`Fiado a ${cliente.alias}`);
-      this.cerrarModal();
-    } else {
-      this.mostrarMensaje(resultado.error || 'Error al procesar', true);
-    }
-    this.procesando = false;
+    this.modalCobroVisible = false;
   }
 
   abrirModalNuevoCliente() {
@@ -152,46 +178,103 @@ export class PosComponent implements OnInit {
     this.nuevoClienteAlias = '';
   }
 
-  async crearClienteYFiar() {
-    if (
-      !this.nuevoClienteAlias.trim() ||
-      !this.saborSeleccionado ||
-      this.procesando
-    )
-      return;
+  // ========== PROCESAMIENTO DE VENTAS ==========
+
+  async procesarVentaCarrito(
+    tipoPago: 'efectivo' | 'fiado',
+    clienteId?: string
+  ) {
+    if (this.procesando || this.carrito.length === 0) return;
 
     this.procesando = true;
+    let errores = 0;
+    let exitos = 0;
 
     try {
-      // Crear cliente
-      const nuevoCliente = await this.clientesService.crearCliente({
-        alias: this.nuevoClienteAlias.trim(),
-      });
+      // Iteramos sobre cada item del carrito
+      for (const item of this.carrito) {
+        // Como el servicio procesa de 1 en 1, hacemos un bucle por la cantidad
+        for (let i = 0; i < item.cantidad; i++) {
+          const resultado = await this.ventasService.procesarVenta({
+            saborId: item.sabor.id,
+            tipoPago: tipoPago,
+            clienteId: clienteId,
+            precioVenta: this.precioVenta,
+          });
 
-      // Procesar venta fiada
-      const resultado = await this.ventasService.procesarVenta({
-        saborId: this.saborSeleccionado.id,
-        tipoPago: 'fiado',
-        clienteId: nuevoCliente.id,
-        precioVenta: this.precioVenta,
-      });
+          if (resultado.success) {
+            exitos++;
+          } else {
+            errores++;
+            console.error(
+              `Error vendiendo ${item.sabor.nombre}:`,
+              resultado.error
+            );
+          }
+        }
+      }
 
-      if (resultado.success) {
-        this.mostrarMensaje(`Cliente creado y fiado a ${nuevoCliente.alias}`);
-        this.cerrarModalNuevoCliente();
-        this.cerrarModal();
+      if (errores === 0) {
+        this.mostrarMensaje(
+          tipoPago === 'fiado'
+            ? '¡Todo fiado correctamente!'
+            : '¡Venta registrada!'
+        );
+        this.limpiarCarrito();
       } else {
-        this.mostrarMensaje(resultado.error || 'Error al procesar', true);
+        this.mostrarMensaje(
+          `Se vendieron ${exitos}, pero hubo ${errores} errores.`,
+          true
+        );
+        if (exitos > 0) this.limpiarCarrito();
       }
     } catch (error) {
-      this.mostrarMensaje('Error al crear cliente', true);
+      console.error('Error procesando carrito:', error);
+      this.mostrarMensaje('Ocurrió un error inesperado', true);
     }
 
     this.procesando = false;
   }
 
+  async venderEfectivo() {
+    await this.procesarVentaCarrito('efectivo');
+  }
+
+  async venderFiado(cliente: Cliente) {
+    await this.procesarVentaCarrito('fiado', cliente.id);
+  }
+
+  async crearClienteYFiar() {
+    if (!this.nuevoClienteAlias.trim()) {
+      this.mostrarMensaje('Ingresa un nombre', true);
+      return;
+    }
+
+    if (this.procesando) return;
+    this.procesando = true;
+
+    try {
+      const nuevoCliente = await this.clientesService.crearCliente({
+        alias: this.nuevoClienteAlias.trim(),
+      });
+
+      this.procesando = false;
+      this.cerrarModalNuevoCliente();
+
+      await this.venderFiado(nuevoCliente);
+    } catch (error) {
+      console.error('Error:', error);
+      this.mostrarMensaje('Error al crear cliente', true);
+      this.procesando = false;
+    }
+  }
+
   private mostrarMensaje(texto: string, esError = false) {
     this.mensaje = texto;
-    setTimeout(() => (this.mensaje = ''), 3000);
+    this.mensajeError = esError;
+    setTimeout(() => {
+      this.mensaje = '';
+      this.mensajeError = false;
+    }, 3000);
   }
 }

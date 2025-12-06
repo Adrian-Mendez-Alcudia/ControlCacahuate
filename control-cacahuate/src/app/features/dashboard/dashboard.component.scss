@@ -1,0 +1,247 @@
+.dashboard-container {
+  padding: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 20px;
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: #f59e0b;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.efectivo {
+    background: linear-gradient(135deg, #22c55e22, #16a34a11);
+    border: 1px solid #22c55e44;
+
+    .kpi-valor {
+      color: #22c55e;
+    }
+  }
+
+  &.utilidad {
+    background: linear-gradient(135deg, #3b82f622, #2563eb11);
+    border: 1px solid #3b82f644;
+
+    .kpi-valor {
+      color: #3b82f6;
+
+      &.negativo {
+        color: #ef4444;
+      }
+    }
+  }
+
+  &.inventario {
+    background: linear-gradient(135deg, #8b5cf622, #7c3aed11);
+    border: 1px solid #8b5cf644;
+
+    .kpi-valor {
+      color: #8b5cf6;
+    }
+  }
+
+  &.calle {
+    background: linear-gradient(135deg, #f59e0b22, #d9770611);
+    border: 1px solid #f59e0b44;
+
+    .kpi-valor {
+      color: #f59e0b;
+    }
+  }
+
+  .kpi-icon {
+    font-size: 20px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+  }
+
+  .kpi-valor {
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .kpi-detalle {
+    font-size: 11px;
+    color: #888;
+  }
+}
+
+.seccion {
+  background: #1e1e32;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #2d2d44;
+
+  h2 {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+}
+
+.rendimiento-seccion {
+  .rendimiento-contenido {
+    text-align: center;
+  }
+
+  .rendimiento-principal {
+    margin-bottom: 16px;
+
+    .numero {
+      display: block;
+      font-size: 42px;
+      font-weight: 700;
+      color: #f59e0b;
+    }
+
+    .texto {
+      font-size: 13px;
+      color: #888;
+    }
+  }
+
+  .rendimiento-stats {
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid #2d2d44;
+    padding-top: 16px;
+
+    .stat {
+      text-align: center;
+
+      .label {
+        display: block;
+        font-size: 11px;
+        color: #888;
+        margin-bottom: 4px;
+      }
+
+      .valor {
+        font-weight: 600;
+        font-size: 16px;
+
+        &.mejor {
+          color: #22c55e;
+        }
+
+        &.peor {
+          color: #ef4444;
+        }
+      }
+    }
+  }
+}
+
+.desglose-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.desglose-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &.separador {
+    border-top: 1px solid #2d2d44;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .label {
+    color: #aaa;
+  }
+
+  .valor {
+    font-weight: 600;
+
+    &.positivo {
+      color: #22c55e;
+    }
+
+    &.fiado {
+      color: #f59e0b;
+    }
+
+    &.negativo {
+      color: #ef4444;
+    }
+  }
+}
+
+.resumen-financiero {
+  .financiero-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .financiero-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #2d2d44;
+    border-radius: 10px;
+
+    &.total {
+      background: linear-gradient(135deg, #f59e0b22, #d9770611);
+      border: 1px solid #f59e0b44;
+
+      .valor {
+        color: #f59e0b;
+        font-size: 18px;
+      }
+    }
+
+    .label {
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    .valor {
+      font-weight: 700;
+      font-size: 16px;
+    }
+  }
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}

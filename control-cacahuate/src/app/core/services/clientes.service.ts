@@ -89,17 +89,28 @@ export class ClientesService {
     notas?: string;
   }): Promise<Cliente> {
     const id = generarId();
+
+    // CORRECCIÓN: Inicializamos solo los campos obligatorios
     const nuevoCliente: Cliente = {
       id,
       alias: datos.alias.trim(),
-      telefono: datos.telefono?.trim(),
-      notas: datos.notas?.trim(),
       saldoPendiente: 0,
       createdAt: Timestamp.now(),
     };
 
+    // Agregamos los opcionales SOLO si tienen valor
+    // Esto evita enviar 'undefined' (que odia Firebase)
+    // y evita enviar 'null' (que odia TypeScript en este caso)
+    if (datos.telefono?.trim()) {
+      nuevoCliente.telefono = datos.telefono.trim();
+    }
+
+    if (datos.notas?.trim()) {
+      nuevoCliente.notas = datos.notas.trim();
+    }
+
     await setDoc(doc(this.clientesCollection, id), nuevoCliente);
-    console.log(`👤 Cliente creado: ${datos.alias}`);
+    console.log(`✅ Cliente creado: ${datos.alias}`);
 
     return nuevoCliente;
   }
@@ -114,13 +125,14 @@ export class ClientesService {
     const actualizacion: any = {};
 
     if (datos.alias) actualizacion.alias = datos.alias.trim();
+    // Aquí usamos 'any' en 'actualizacion', así que 'null' es válido para borrar el campo en Firebase
     if (datos.telefono !== undefined)
       actualizacion.telefono = datos.telefono?.trim() || null;
     if (datos.notas !== undefined)
       actualizacion.notas = datos.notas?.trim() || null;
 
     await updateDoc(doc(this.clientesCollection, id), actualizacion);
-    console.log(`✏️ Cliente actualizado: ${id}`);
+    console.log(`🔄 Cliente actualizado: ${id}`);
   }
 
   /**
@@ -164,7 +176,7 @@ export class ClientesService {
       saldoPendiente: nuevoSaldo,
     });
 
-    console.log(`📝 Deuda agregada: +$${monto} (Total: $${nuevoSaldo})`);
+    console.log(`💸 Deuda agregada: +$${monto} (Total: $${nuevoSaldo})`);
   }
 
   /**
@@ -193,13 +205,19 @@ export class ClientesService {
 
     // Crear registro de abono
     const id = generarId();
+
+    // CORRECCIÓN: Igual que arriba, solo obligatorios primero
     const abono: Abono = {
       id,
       clienteId: datos.clienteId,
       monto: datos.monto,
       fecha: Timestamp.now(),
-      notas: datos.notas?.trim(),
     };
+
+    // Agregamos nota solo si existe
+    if (datos.notas?.trim()) {
+      abono.notas = datos.notas.trim();
+    }
 
     // Calcular nuevo saldo
     const nuevoSaldo =
@@ -213,7 +231,7 @@ export class ClientesService {
       }),
     ]);
 
-    console.log(`💵 Abono registrado: $${datos.monto} (Saldo: $${nuevoSaldo})`);
+    console.log(`💰 Abono registrado: $${datos.monto} (Saldo: $${nuevoSaldo})`);
 
     return abono;
   }
