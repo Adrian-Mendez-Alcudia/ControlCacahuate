@@ -87,7 +87,28 @@
       }
     </div>
     } } } @else {
-    <div class="loading">Cargando...</div>
+    <!-- SKELETON LOADING PARA LOTES -->
+    <div class="lotes-lista">
+      @for (i of [1,2,3, 4, 5, 6]; track i) {
+      <div class="lote-card" style="border-left: 4px solid #3d3d5c">
+        <div class="lote-info" style="margin-bottom: 8px">
+          <app-skeleton width="60%" height="16px"></app-skeleton>
+          <!-- Nombre Sabor -->
+          <app-skeleton width="30%" height="12px"></app-skeleton>
+          <!-- Fecha -->
+        </div>
+        <div
+          class="lote-detalles"
+          style="display: flex; justify-content: space-between"
+        >
+          <app-skeleton width="40%" height="14px"></app-skeleton>
+          <!-- Bolsas -->
+          <app-skeleton width="30%" height="14px"></app-skeleton>
+          <!-- Costo -->
+        </div>
+      </div>
+      }
+    </div>
     }
   </section>
 </div>

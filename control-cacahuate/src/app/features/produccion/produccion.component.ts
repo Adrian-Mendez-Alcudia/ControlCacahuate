@@ -15,6 +15,8 @@ import {
 } from '../../core/utils/calculos.utils';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Observable, combineLatest, map } from 'rxjs';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component'; // <--- Importar
+import { skeletonClasses } from '@mui/material';
 
 interface SaborConInventario extends Sabor {
   cantidad: number;
@@ -24,7 +26,7 @@ interface SaborConInventario extends Sabor {
 @Component({
   selector: 'app-produccion',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonComponent],
   templateUrl: './produccion.component.html',
   styleUrl: './produccion.component.scss',
 })

@@ -52,8 +52,26 @@
       <span class="precio">{{ formatearMoneda(precioVenta) }}</span>
     </div>
     } } } @else {
-    <div class="loading">Cargando sabores...</div>
-    }
+    <!-- AQUÍ ES DONDE USAMOS EL SKELETON (Esto es lo que faltaba) -->
+    @for (i of [1,2,3,4,5,6]; track i) {
+    <div
+      class="sabor-btn"
+      style="border-color: #3d3d5c; background: #2d2d44; cursor: default"
+    >
+      <!-- Emoji skeleton -->
+      <app-skeleton width="40px" height="40px" shape="circle"></app-skeleton>
+      <!-- Nombre skeleton -->
+      <app-skeleton width="70%" height="16px"></app-skeleton>
+      <!-- Stock badge skeleton -->
+      <app-skeleton
+        width="50%"
+        height="20px"
+        borderRadius="12px"
+      ></app-skeleton>
+      <!-- Precio skeleton -->
+      <app-skeleton width="40%" height="24px"></app-skeleton>
+    </div>
+    } }
   </div>
 
   <!-- Resumen del día (Solo si carrito vacío) -->
@@ -112,7 +130,6 @@
             -
           </button>
           <span class="qty">{{ item.cantidad }}</span>
-          <!-- AQUI ESTABA EL ERROR POTENCIAL: Pasamos item.sabor que solo tiene ID garantizado, pero nuestra funcion en TS lo maneja -->
           <button class="btn-qty" (click)="agregarAlCarrito(item.sabor)">
             +
           </button>

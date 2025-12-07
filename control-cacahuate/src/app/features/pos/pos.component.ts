@@ -10,6 +10,7 @@ import { CarritoService } from '../../core/services/carrito.service';
 import { Sabor, Cliente } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
 import { Observable, combineLatest, map, tap } from 'rxjs';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component'; // <--- Importar
 
 // Interfaz extendida localmente para mostrar stock y costos
 interface SaborConInventario extends Sabor {
@@ -20,7 +21,7 @@ interface SaborConInventario extends Sabor {
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonComponent], // <--- Agregar aquí
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.scss',
 })
