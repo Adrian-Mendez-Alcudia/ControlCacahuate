@@ -1,0 +1,85 @@
+<div class="corte-container">
+  <header class="header">
+    <h1>✂️ Corte de Caja</h1>
+    <p class="subtitle">Verifica el dinero del día</p>
+  </header>
+
+  @if (cargando) {
+  <div class="loading">Cargando datos del día...</div>
+  } @else {
+  <div class="resumen-card">
+    <h3>Resumen del Sistema</h3>
+
+    <div class="row">
+      <span>Ventas Efectivo:</span>
+      <span class="monto">{{ formatear(ventasEfectivo) }}</span>
+    </div>
+    <div class="row">
+      <span>Abonos Efectivo:</span>
+      <span class="monto">{{ formatear(abonosEfectivo) }}</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row total">
+      <span>Debe haber en caja:</span>
+      <span class="monto-total">{{ formatear(totalSistema) }}</span>
+    </div>
+  </div>
+
+  <form [formGroup]="corteForm" (ngSubmit)="realizarCorte()" class="corte-form">
+    <div class="form-group">
+      <label>¿Cuánto dinero contaste? (Real)</label>
+      <div class="input-prefix">
+        <span class="prefix">$</span>
+        <input
+          type="number"
+          formControlName="dineroReal"
+          placeholder="0.00"
+          step="0.50"
+        />
+      </div>
+    </div>
+
+    <!-- Indicador de Diferencia -->
+    <div
+      class="diferencia-card"
+      [class.faltante]="diferencia < 0"
+      [class.sobrante]="diferencia > 0"
+      [class.exacto]="diferencia === 0"
+    >
+      <span class="label">Diferencia:</span>
+      <span class="valor">
+        @if (diferencia > 0) { + }
+        {{ formatear(diferencia) }}
+      </span>
+      <span class="estado">
+        @if (diferencia === 0) { ✅ Exacto } @else if (diferencia < 0) { ❌
+        Faltante } @else { ⚠️ Sobrante }
+      </span>
+    </div>
+
+    <div class="form-group">
+      <label>Notas del corte (Opcional)</label>
+      <textarea
+        formControlName="notas"
+        placeholder="Ej: Se tomó dinero para garrafón de agua..."
+        rows="3"
+      ></textarea>
+    </div>
+
+    <div class="acciones">
+      <button type="button" class="btn-cancelar" (click)="cancelar()">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="btn-confirmar"
+        [disabled]="guardando || corteForm.invalid"
+      >
+        @if (guardando) { Guardando... } @else { 🔒 Cerrar Caja }
+      </button>
+    </div>
+  </form>
+  }
+</div>

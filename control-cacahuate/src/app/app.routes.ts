@@ -1,6 +1,9 @@
 import { Routes } from '@angular/router';
+import { CorteCajaComponent } from './features/corte-caja/corte-caja.component';
 
 export const routes: Routes = [
+  { path: 'corte-caja', component: CorteCajaComponent },
+
   {
     path: '',
     redirectTo: 'pos',

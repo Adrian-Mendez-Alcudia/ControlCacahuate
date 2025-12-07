@@ -33,6 +33,9 @@ export class NotificationService {
   success(message: string) {
     this.show(message, 'success');
   }
+  info(message: string) {
+    this.show(message, 'info');
+  }
 
   error(message: string) {
     this.show(message, 'error');

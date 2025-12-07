@@ -121,6 +121,104 @@
     </div>
   </section>
   } @else {
-  <div class="loading">Cargando datos...</div>
+  <!-- SKELETON LOADING -->
+  <div class="cards-grid">
+    <!-- Skeleton Ventas -->
+    <div
+      class="stat-card"
+      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
+    >
+      <app-skeleton
+        width="40%"
+        height="14px"
+        style="margin-bottom: 8px"
+      ></app-skeleton>
+      <app-skeleton
+        width="70%"
+        height="32px"
+        style="margin-bottom: 4px"
+      ></app-skeleton>
+      <app-skeleton width="50%" height="12px"></app-skeleton>
+    </div>
+
+    <!-- Skeleton Abonos -->
+    <div
+      class="stat-card"
+      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
+    >
+      <app-skeleton
+        width="40%"
+        height="14px"
+        style="margin-bottom: 8px"
+      ></app-skeleton>
+      <app-skeleton
+        width="70%"
+        height="32px"
+        style="margin-bottom: 4px"
+      ></app-skeleton>
+      <app-skeleton width="50%" height="12px"></app-skeleton>
+    </div>
+
+    <!-- Skeleton Fiado -->
+    <div
+      class="stat-card"
+      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
+    >
+      <app-skeleton
+        width="40%"
+        height="14px"
+        style="margin-bottom: 8px"
+      ></app-skeleton>
+      <app-skeleton
+        width="70%"
+        height="32px"
+        style="margin-bottom: 4px"
+      ></app-skeleton>
+      <app-skeleton width="50%" height="12px"></app-skeleton>
+    </div>
+
+    <!-- Skeleton Total -->
+    <div
+      class="stat-card"
+      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
+    >
+      <app-skeleton
+        width="30%"
+        height="14px"
+        style="margin-bottom: 8px"
+      ></app-skeleton>
+      <app-skeleton
+        width="80%"
+        height="40px"
+        style="margin-bottom: 4px"
+      ></app-skeleton>
+      <app-skeleton width="40%" height="12px"></app-skeleton>
+    </div>
+  </div>
   }
+  <div class="acciones-rapidas" style="margin-top: 24px">
+    <button
+      class="btn-corte"
+      routerLink="/corte-caja"
+      style="
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        transition: transform 0.2s;
+      "
+    >
+      <span>✂️</span> Realizar Corte de Caja
+    </button>
+  </div>
 </div>

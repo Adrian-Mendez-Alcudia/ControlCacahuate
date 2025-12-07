@@ -15,6 +15,7 @@ import {
   calcularRendimientoPromedio,
 } from '../../core/utils/calculos.utils';
 import { Observable, combineLatest, map } from 'rxjs';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component'; // Importar
 
 interface ResumenDashboard {
   efectivoHoy: number;
@@ -33,7 +34,7 @@ interface ResumenDashboard {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SkeletonComponent], // Agregar SkeletonComponent y RouterModule
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
