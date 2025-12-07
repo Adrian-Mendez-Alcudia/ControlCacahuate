@@ -20,15 +20,26 @@
       <p class="hint">Ve a <strong>Config</strong> para agregar tus sabores</p>
     </div>
     } @else { @for (sabor of sabores; track sabor.id) {
-    <button
+    <!-- Cambiamos button por div para poder anidar el botón de restar -->
+    <div
       class="sabor-btn"
       [class.sin-stock]="sabor.cantidad <= 0"
       [style.--sabor-color]="sabor.color"
       (click)="agregarAlCarrito(sabor)"
+      role="button"
+      tabindex="0"
     >
       <!-- Badge de cantidad en carrito -->
       @if (getCantidadEnCarrito(sabor.id) > 0) {
       <span class="badge-cantidad">{{ getCantidadEnCarrito(sabor.id) }}</span>
+
+      <!-- NUEVO: Botón para restar directo en la tarjeta -->
+      <button
+        class="btn-menos-card"
+        (click)="$event.stopPropagation(); restarDelCarrito(sabor)"
+      >
+        -
+      </button>
       }
 
       <span class="emoji">{{ sabor.emoji }}</span>
@@ -38,7 +49,7 @@
         {{ sabor.cantidad }} disponibles } @else { Sin stock }
       </span>
       <span class="precio">{{ formatearMoneda(precioVenta) }}</span>
-    </button>
+    </div>
     } } } @else {
     <div class="loading">Cargando sabores...</div>
     }
@@ -63,13 +74,15 @@
 <!-- Barra de Cobro Flotante -->
 @if (carrito.length > 0) {
 <div class="barra-cobro">
+  <!-- NUEVO: Botón para cancelar/vaciar orden -->
+  <button class="btn-vaciar-rapido" (click)="limpiarCarrito()">🗑️</button>
+
   <div class="info-cobro">
     <span class="items-count">{{ cantidadTotalItems }} artículos</span>
     <span class="total">{{ formatearMoneda(totalCarrito) }}</span>
   </div>
-  <button class="btn-ver-cobrar" (click)="abrirModalCobrar()">
-    Ver / Cobrar
-  </button>
+
+  <button class="btn-ver-cobrar" (click)="abrirModalCobrar()">Cobrar</button>
 </div>
 }
 

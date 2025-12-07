@@ -2,7 +2,7 @@
   padding: 16px;
   max-width: 500px;
   margin: 0 auto;
-  padding-bottom: 100px; // Un poco más de espacio para asegurar que no tape nada
+  padding-bottom: 100px;
 }
 
 .header {
@@ -73,6 +73,7 @@
   gap: 8px;
   transition: all 0.2s;
   cursor: pointer;
+  user-select: none; /* Evita selección de texto al hacer clics rápidos */
 
   &:active {
     transform: scale(0.95);
@@ -133,6 +134,33 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 10;
+  }
+
+  /* NUEVO: Estilo del botón restar flotante */
+  .btn-menos-card {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background: #3d3d5c;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    border: 2px solid #1e1e32;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    z-index: 11;
+    line-height: 0;
+    padding-bottom: 4px;
+
+    &:active {
+      background: #ef4444;
+    }
   }
 }
 
@@ -217,12 +245,12 @@
   }
 }
 
-// Barra de Cobro Flotante - CORREGIDA
+/* Barra de Cobro Flotante */
 .barra-cobro {
   position: fixed;
   bottom: 20px;
   left: 50%;
-  transform: translateX(-50%); // Centrado horizontal firme
+  transform: translateX(-50%);
   width: 90%;
   max-width: 480px;
   background: #2d2d44;
@@ -231,16 +259,37 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px; /* Espacio entre los elementos */
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  border: 1px solid #f59e0b; // Borde dorado para que resalte más
-  z-index: 1500; // Z-index alto para que nada la tape
-
-  // Animación simplificada y con forwards para que no desaparezca
+  border: 1px solid #f59e0b;
+  z-index: 1500;
   animation: slideUp 0.3s ease forwards;
 
+  /* NUEVO: Botón de vaciar rápido */
+  .btn-vaciar-rapido {
+    background: #3d3d5c;
+    border: none;
+    color: #ef4444;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #ef444422;
+    }
+  }
+
   .info-cobro {
+    flex: 1; /* Ocupa el espacio central */
     display: flex;
     flex-direction: column;
+    align-items: center;
 
     .items-count {
       font-size: 12px;
@@ -258,7 +307,7 @@
     background: #22c55e;
     color: white;
     border: none;
-    padding: 12px 24px;
+    padding: 12px 20px;
     border-radius: 12px;
     font-weight: 600;
     font-size: 15px;
