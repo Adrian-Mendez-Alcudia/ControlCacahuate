@@ -9,9 +9,12 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  query,
+  where,
+  getDocs,
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
-import { Cliente, Abono } from '../models/interfaces';
+import { Cliente, Abono, Venta, MovimientoCuenta } from '../models/interfaces';
 import {
   generarId,
   estaFechaVencida,
@@ -30,6 +33,7 @@ export class ClientesService {
   private firestore = inject(Firestore);
   private clientesCollection = collection(this.firestore, 'clientes');
   private abonosCollection = collection(this.firestore, 'abonos');
+  private ventasCollection = collection(this.firestore, 'ventas'); // Referencia necesaria
 
   /**
    * Obtiene todos los clientes en tiempo real
@@ -90,7 +94,6 @@ export class ClientesService {
   }): Promise<Cliente> {
     const id = generarId();
 
-    // CORRECCIÓN: Inicializamos solo los campos obligatorios
     const nuevoCliente: Cliente = {
       id,
       alias: datos.alias.trim(),
@@ -98,9 +101,6 @@ export class ClientesService {
       createdAt: Timestamp.now(),
     };
 
-    // Agregamos los opcionales SOLO si tienen valor
-    // Esto evita enviar 'undefined' (que odia Firebase)
-    // y evita enviar 'null' (que odia TypeScript en este caso)
     if (datos.telefono?.trim()) {
       nuevoCliente.telefono = datos.telefono.trim();
     }
@@ -125,7 +125,6 @@ export class ClientesService {
     const actualizacion: any = {};
 
     if (datos.alias) actualizacion.alias = datos.alias.trim();
-    // Aquí usamos 'any' en 'actualizacion', así que 'null' es válido para borrar el campo en Firebase
     if (datos.telefono !== undefined)
       actualizacion.telefono = datos.telefono?.trim() || null;
     if (datos.notas !== undefined)
@@ -203,10 +202,8 @@ export class ClientesService {
       );
     }
 
-    // Crear registro de abono
     const id = generarId();
 
-    // CORRECCIÓN: Igual que arriba, solo obligatorios primero
     const abono: Abono = {
       id,
       clienteId: datos.clienteId,
@@ -214,16 +211,13 @@ export class ClientesService {
       fecha: Timestamp.now(),
     };
 
-    // Agregamos nota solo si existe
     if (datos.notas?.trim()) {
       abono.notas = datos.notas.trim();
     }
 
-    // Calcular nuevo saldo
     const nuevoSaldo =
       Math.round((cliente.saldoPendiente - datos.monto) * 100) / 100;
 
-    // Guardar abono y actualizar cliente
     await Promise.all([
       setDoc(doc(this.abonosCollection, id), abono),
       updateDoc(doc(this.clientesCollection, datos.clienteId), {
@@ -249,7 +243,7 @@ export class ClientesService {
   }
 
   /**
-   * Obtiene el historial de abonos de un cliente
+   * Obtiene el historial de abonos de un cliente (Observable)
    */
   getAbonosCliente$(clienteId: string): Observable<Abono[]> {
     return collectionData(this.abonosCollection, { idField: 'id' }).pipe(
@@ -270,5 +264,86 @@ export class ClientesService {
         clientes.reduce((total, c) => total + c.saldoPendiente, 0)
       )
     );
+  }
+
+  // ==========================================
+  // NUEVO: HISTORIAL / ESTADO DE CUENTA
+  // ==========================================
+
+  /**
+   * Genera el estado de cuenta unificado (Ventas Fiadas + Abonos)
+   */
+  async getHistorialCompleto(clienteId: string): Promise<MovimientoCuenta[]> {
+    // 1. Traer Abonos
+    const abonosQuery = query(
+      this.abonosCollection,
+      where('clienteId', '==', clienteId)
+    );
+    const abonosSnap = await getDocs(abonosQuery);
+    const abonos = abonosSnap.docs.map(
+      (d) => ({ id: d.id, ...d.data() } as Abono)
+    );
+
+    // 2. Traer Ventas (Solo Fiado)
+    const ventasQuery = query(
+      this.ventasCollection,
+      where('clienteId', '==', clienteId),
+      where('tipoPago', '==', 'fiado')
+    );
+    const ventasSnap = await getDocs(ventasQuery);
+    const ventas = ventasSnap.docs.map(
+      (d) => ({ id: d.id, ...d.data() } as Venta)
+    );
+
+    // 3. Unificar en estructura común
+    let movimientos: MovimientoCuenta[] = [];
+
+    // Mapear Abonos
+    abonos.forEach((a) => {
+      movimientos.push({
+        id: a.id,
+        fecha: a.fecha,
+        tipo: 'ABONO',
+        descripcion: a.notas || 'Abono a cuenta',
+        monto: a.monto,
+        saldoAcumulado: 0, // Se calcula después
+      });
+    });
+
+    // Mapear Ventas (Cargos)
+    ventas.forEach((v) => {
+      // Intentamos obtener el nombre del sabor si existe en snapshot, si no, genérico
+      const desc = v.nombreSaborSnapshot
+        ? `Venta: ${v.cantidad}x ${v.nombreSaborSnapshot}`
+        : `Venta Fiado (x${v.cantidad})`;
+
+      movimientos.push({
+        id: v.id,
+        fecha: v.fecha,
+        tipo: 'CARGO',
+        descripcion: desc,
+        monto: v.precioUnitario * v.cantidad, // Total de la línea
+        saldoAcumulado: 0,
+      });
+    });
+
+    // 4. Ordenar Cronológicamente (Más antiguo primero para calcular saldo)
+    movimientos.sort((a, b) => a.fecha.toMillis() - b.fecha.toMillis());
+
+    // 5. Calcular Saldo Acumulado (Running Balance)
+    let saldoActual = 0;
+    movimientos = movimientos.map((m) => {
+      if (m.tipo === 'CARGO') {
+        saldoActual += m.monto;
+      } else {
+        saldoActual -= m.monto;
+      }
+      // Redondeo para evitar errores de punto flotante
+      saldoActual = Math.round(saldoActual * 100) / 100;
+      return { ...m, saldoAcumulado: saldoActual };
+    });
+
+    // 6. Retornar invertido (Más reciente arriba) para la vista
+    return movimientos.reverse();
   }
 }

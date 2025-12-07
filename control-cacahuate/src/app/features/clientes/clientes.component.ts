@@ -13,7 +13,7 @@ import {
 } from '../../core/services/clientes.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Cliente } from '../../core/models/interfaces';
+import { Cliente, MovimientoCuenta } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
 import { Observable } from 'rxjs';
 
@@ -39,6 +39,12 @@ export class ClientesComponent implements OnInit {
   clienteSeleccionado: DeudorInfo | null = null;
   montoAbono: number | null = null;
   notasAbono = '';
+
+  // Modal historial (NUEVO)
+  modalHistorialVisible = false;
+  clienteHistorial: Cliente | null = null;
+  historialMovimientos: MovimientoCuenta[] = [];
+  cargandoHistorial = false;
 
   // Modal nuevo cliente
   modalNuevoClienteVisible = false;
@@ -124,6 +130,30 @@ export class ClientesComponent implements OnInit {
     this.guardando = false;
   }
 
+  // ========== HISTORIAL (NUEVO) ==========
+
+  async abrirHistorial(cliente: Cliente) {
+    this.clienteHistorial = cliente;
+    this.modalHistorialVisible = true;
+    this.cargandoHistorial = true;
+    this.historialMovimientos = [];
+
+    try {
+      this.historialMovimientos =
+        await this.clientesService.getHistorialCompleto(cliente.id);
+    } catch (error) {
+      console.error('Error cargando historial', error);
+      this.notificationService.error('No se pudo cargar el historial');
+    } finally {
+      this.cargandoHistorial = false;
+    }
+  }
+
+  cerrarHistorial() {
+    this.modalHistorialVisible = false;
+    this.clienteHistorial = null;
+  }
+
   // ========== NUEVO CLIENTE ==========
 
   abrirModalNuevoCliente() {
@@ -160,7 +190,7 @@ export class ClientesComponent implements OnInit {
     this.guardando = false;
   }
 
-  // ========== ELIMINAR CLIENTE (NUEVO) ==========
+  // ========== ELIMINAR CLIENTE ==========
 
   async eliminarCliente(cliente: Cliente) {
     if (cliente.saldoPendiente > 0) {

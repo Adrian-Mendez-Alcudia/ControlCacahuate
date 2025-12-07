@@ -49,6 +49,7 @@ export interface Venta {
   tipoPago: 'efectivo' | 'fiado';
   clienteId?: string;
   fecha: Timestamp;
+  nombreSaborSnapshot?: string; // Opcional: para guardar el nombre del sabor en el momento de la venta
 }
 
 export interface Abono {
@@ -66,6 +67,18 @@ export interface CajaDiaria {
   totalEfectivo: number;
   ventasFiado: number;
   costoVendido: number;
+}
+
+// ============================================
+// NUEVA INTERFAZ PARA ESTADO DE CUENTA
+// ============================================
+export interface MovimientoCuenta {
+  id: string;
+  fecha: Timestamp;
+  tipo: 'CARGO' | 'ABONO';
+  descripcion: string;
+  monto: number;
+  saldoAcumulado: number; // Saldo calculado después de este movimiento
 }
 
 // ============================================
