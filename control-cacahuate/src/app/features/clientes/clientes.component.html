@@ -4,12 +4,6 @@
     <p class="subtitle">Gestiona los fiados pendientes</p>
   </header>
 
-  <!-- Mensaje -->
-  @if (mensaje) {
-  <!-- Aquí agregamos la clase dinámica [class.error] -->
-  <div class="mensaje" [class.error]="mensajeError">{{ mensaje }}</div>
-  }
-
   <!-- Total en la calle -->
   @if (dineroEnCalle$ | async; as total) {
   <div class="total-calle">
@@ -83,9 +77,23 @@
       @for (cliente of clientes; track cliente.id) {
       <div class="cliente-item">
         <span class="nombre">{{ cliente.alias }}</span>
-        <span class="saldo" [class.tiene-deuda]="cliente.saldoPendiente > 0">
-          {{ formatearMoneda(cliente.saldoPendiente) }}
-        </span>
+
+        <div class="cliente-acciones">
+          <span class="saldo" [class.tiene-deuda]="cliente.saldoPendiente > 0">
+            {{ formatearMoneda(cliente.saldoPendiente) }}
+          </span>
+
+          <!-- Botón Eliminar (Solo si no debe dinero) -->
+          @if (cliente.saldoPendiente === 0) {
+          <button
+            class="btn-eliminar-icon"
+            (click)="eliminarCliente(cliente)"
+            title="Eliminar cliente"
+          >
+            🗑️
+          </button>
+          }
+        </div>
       </div>
       }
     </div>
@@ -93,7 +101,7 @@
   </section>
 </div>
 
-<!-- Modal Abono -->
+<!-- Modal Abono (Template Driven) -->
 @if (modalAbonoVisible && clienteSeleccionado) {
 <div class="modal-overlay" (click)="cerrarModalAbono()">
   <div class="modal" (click)="$event.stopPropagation()">
@@ -150,50 +158,71 @@
 </div>
 }
 
-<!-- Modal Nuevo Cliente -->
+<!-- Modal Nuevo Cliente (Reactive Forms) -->
 @if (modalNuevoClienteVisible) {
 <div class="modal-overlay" (click)="cerrarModalNuevoCliente()">
   <div class="modal" (click)="$event.stopPropagation()">
     <h2>👤 Nuevo Cliente</h2>
 
-    <div class="form-group">
-      <label>Nombre o alias *</label>
-      <input
-        type="text"
-        [(ngModel)]="nuevoCliente.alias"
-        placeholder="Ej: Juan Mecánico"
-      />
-    </div>
+    <form [formGroup]="clienteForm" (ngSubmit)="crearCliente()">
+      <div class="form-group">
+        <label>Nombre o alias *</label>
+        <input
+          type="text"
+          formControlName="alias"
+          placeholder="Ej: Juan Mecánico"
+          [class.invalid]="
+            clienteForm.get('alias')?.invalid &&
+            clienteForm.get('alias')?.touched
+          "
+        />
+        @if (clienteForm.get('alias')?.hasError('required') &&
+        clienteForm.get('alias')?.touched) {
+        <span class="error-text">El nombre es obligatorio</span>
+        } @if (clienteForm.get('alias')?.hasError('minlength') &&
+        clienteForm.get('alias')?.touched) {
+        <span class="error-text">Mínimo 3 caracteres</span>
+        }
+      </div>
 
-    <div class="form-group">
-      <label>Teléfono (opcional)</label>
-      <input
-        type="tel"
-        [(ngModel)]="nuevoCliente.telefono"
-        placeholder="Ej: 555-123-4567"
-      />
-    </div>
+      <div class="form-group">
+        <label>Teléfono (opcional, 10 dígitos)</label>
+        <input
+          type="tel"
+          formControlName="telefono"
+          placeholder="Ej: 9931234567"
+          [class.invalid]="
+            clienteForm.get('telefono')?.invalid &&
+            clienteForm.get('telefono')?.touched
+          "
+        />
+        @if (clienteForm.get('telefono')?.hasError('pattern') &&
+        clienteForm.get('telefono')?.touched) {
+        <span class="error-text">Debe tener exactamente 10 números</span>
+        }
+      </div>
 
-    <div class="form-group">
-      <label>Notas (opcional)</label>
-      <input
-        type="text"
-        [(ngModel)]="nuevoCliente.notas"
-        placeholder="Ej: Cliente frecuente"
-      />
-    </div>
+      <div class="form-group">
+        <label>Notas (opcional)</label>
+        <input
+          type="text"
+          formControlName="notas"
+          placeholder="Ej: Cliente frecuente"
+        />
+      </div>
 
-    <button
-      class="btn-confirmar"
-      (click)="crearCliente()"
-      [disabled]="!nuevoCliente.alias.trim() || guardando"
-    >
-      ✓ Crear Cliente
-    </button>
+      <button type="submit" class="btn-confirmar" [disabled]="guardando">
+        ✓ Crear Cliente
+      </button>
 
-    <button class="btn-cancelar" (click)="cerrarModalNuevoCliente()">
-      Cancelar
-    </button>
+      <button
+        type="button"
+        class="btn-cancelar"
+        (click)="cerrarModalNuevoCliente()"
+      >
+        Cancelar
+      </button>
+    </form>
   </div>
 </div>
 }

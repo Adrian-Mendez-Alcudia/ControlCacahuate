@@ -1,11 +1,18 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import {
   ClientesService,
   DeudorInfo,
 } from '../../core/services/clientes.service';
 import { VentasService } from '../../core/services/ventas.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { Cliente } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
 import { Observable } from 'rxjs';
@@ -13,13 +20,15 @@ import { Observable } from 'rxjs';
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss',
 })
 export class ClientesComponent implements OnInit {
   private clientesService = inject(ClientesService);
   private ventasService = inject(VentasService);
+  private notificationService = inject(NotificationService);
+  private fb = inject(FormBuilder);
 
   deudores$!: Observable<DeudorInfo[]>;
   todosClientes$!: Observable<Cliente[]>;
@@ -33,16 +42,20 @@ export class ClientesComponent implements OnInit {
 
   // Modal nuevo cliente
   modalNuevoClienteVisible = false;
-  nuevoCliente = {
-    alias: '',
-    telefono: '',
-    notas: '',
-  };
+
+  // FORMULARIO REACTIVO
+  clienteForm: FormGroup;
 
   // Estado
   guardando = false;
-  mensaje = '';
-  mensajeError = false;
+
+  constructor() {
+    this.clienteForm = this.fb.group({
+      alias: ['', [Validators.required, Validators.minLength(3)]],
+      telefono: ['', [Validators.pattern('^[0-9]{10}$')]],
+      notas: [''],
+    });
+  }
 
   ngOnInit() {
     this.deudores$ = this.clientesService.getDeudores$();
@@ -80,12 +93,12 @@ export class ClientesComponent implements OnInit {
 
   async confirmarAbono() {
     if (!this.clienteSeleccionado || !this.montoAbono || this.montoAbono <= 0) {
-      this.mostrarMensaje('Ingresa un monto válido', true);
+      this.notificationService.error('Ingresa un monto válido');
       return;
     }
 
     if (this.montoAbono > this.clienteSeleccionado.saldoPendiente) {
-      this.mostrarMensaje('El abono excede la deuda', true);
+      this.notificationService.error('El abono excede la deuda');
       return;
     }
 
@@ -98,16 +111,14 @@ export class ClientesComponent implements OnInit {
         notas: this.notasAbono || undefined,
       });
 
-      // Registrar en caja
       await this.ventasService.registrarAbonoEnCaja(this.montoAbono);
 
-      this.mostrarMensaje(
+      this.notificationService.success(
         `Abono de ${this.formatearMoneda(this.montoAbono)} registrado`
       );
       this.cerrarModalAbono();
     } catch (error: any) {
-      console.error('Error al registrar abono:', error);
-      this.mostrarMensaje(error.message || 'Error al registrar abono', true);
+      this.notificationService.error('Error al registrar abono');
     }
 
     this.guardando = false;
@@ -116,7 +127,7 @@ export class ClientesComponent implements OnInit {
   // ========== NUEVO CLIENTE ==========
 
   abrirModalNuevoCliente() {
-    this.nuevoCliente = { alias: '', telefono: '', notas: '' };
+    this.clienteForm.reset();
     this.modalNuevoClienteVisible = true;
   }
 
@@ -125,49 +136,58 @@ export class ClientesComponent implements OnInit {
   }
 
   async crearCliente() {
-    if (!this.nuevoCliente.alias.trim()) {
-      this.mostrarMensaje('El nombre es requerido', true);
+    if (this.clienteForm.invalid) {
+      this.clienteForm.markAllAsTouched();
       return;
     }
 
     this.guardando = true;
+    const formValues = this.clienteForm.value;
 
     try {
-      // CORRECCIÓN PRINCIPAL:
-      // Firebase falla si envías 'undefined'.
-      // Creamos un objeto dinámico solo con los datos que sí existen.
-      const datosCliente: any = {
-        alias: this.nuevoCliente.alias,
-      };
+      await this.clientesService.crearCliente({
+        alias: formValues.alias,
+        telefono: formValues.telefono || undefined,
+        notas: formValues.notas || undefined,
+      });
 
-      if (this.nuevoCliente.telefono && this.nuevoCliente.telefono.trim()) {
-        datosCliente.telefono = this.nuevoCliente.telefono.trim();
-      }
-
-      if (this.nuevoCliente.notas && this.nuevoCliente.notas.trim()) {
-        datosCliente.notas = this.nuevoCliente.notas.trim();
-      }
-
-      await this.clientesService.crearCliente(datosCliente);
-
-      this.mostrarMensaje('Cliente creado');
+      this.notificationService.success('Cliente creado correctamente');
       this.cerrarModalNuevoCliente();
     } catch (error) {
-      console.error('Error al crear cliente:', error);
-      this.mostrarMensaje('Error al crear cliente', true);
+      console.error(error);
     }
 
     this.guardando = false;
   }
 
-  // ========== UTILIDADES ==========
+  // ========== ELIMINAR CLIENTE (NUEVO) ==========
 
-  private mostrarMensaje(texto: string, esError = false) {
-    this.mensaje = texto;
-    this.mensajeError = esError;
-    setTimeout(() => {
-      this.mensaje = '';
-      this.mensajeError = false;
-    }, 3000);
+  async eliminarCliente(cliente: Cliente) {
+    if (cliente.saldoPendiente > 0) {
+      this.notificationService.error(
+        `No puedes eliminar a ${cliente.alias} porque tiene deuda pendiente.`
+      );
+      return;
+    }
+
+    const confirmacion = confirm(
+      `¿Estás seguro de eliminar a "${cliente.alias}" permanentemente?`
+    );
+
+    if (!confirmacion) return;
+
+    try {
+      const resultado = await this.clientesService.eliminarCliente(cliente.id);
+
+      if (resultado.success) {
+        this.notificationService.success('Cliente eliminado');
+      } else {
+        this.notificationService.error(
+          resultado.error || 'No se pudo eliminar'
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
   }
 }
