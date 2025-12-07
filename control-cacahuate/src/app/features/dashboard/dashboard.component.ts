@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router'; // Importante para el routerLink
 import { InventarioService } from '../../core/services/inventario.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { ClientesService } from '../../core/services/clientes.service';
@@ -15,26 +16,36 @@ import {
   calcularRendimientoPromedio,
 } from '../../core/utils/calculos.utils';
 import { Observable, combineLatest, map } from 'rxjs';
-import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component'; // Importar
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 interface ResumenDashboard {
+  // Finanzas del día
   efectivoHoy: number;
-  utilidadHoy: number;
-  valorInventario: number;
-  totalBolsas: number;
-  dineroEnCalle: number;
-  clientesConDeuda: number;
-  rendimientoPromedio: number;
+  ventasTotalesHoy: number;
+  costoVendidoHoy: number;
+  utilidadBrutaHoy: number; // (Efectivo + Fiado) - Costo
+  margenHoy: number; // Porcentaje
+
+  // Desglose
   ventasEfectivoHoy: number;
   ventasFiadoHoy: number;
   abonosHoy: number;
-  costoVendidoHoy: number;
+
+  // Capital Global
+  valorInventario: number;
+  dineroEnCalle: number;
+  capitalTotal: number;
+
+  // Operativo
+  totalBolsas: number;
+  clientesConDeuda: number;
+  rendimientoPromedio: number;
 }
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, SkeletonComponent], // Agregar SkeletonComponent y RouterModule
+  imports: [CommonModule, SkeletonComponent, RouterModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -43,10 +54,14 @@ export class DashboardComponent implements OnInit {
   private ventasService = inject(VentasService);
   private clientesService = inject(ClientesService);
   private configuracionService = inject(ConfiguracionService);
+  fechaHoy = new Date();
 
   resumen$!: Observable<ResumenDashboard>;
   lotes$!: Observable<LoteProduccion[]>;
   nombreNegocio = 'Control Cacahuate';
+
+  // Datos para gráfico de dona (calculados en el template o aquí)
+  chartData = { inventario: 0, calle: 0 };
 
   ngOnInit() {
     this.configuracionService.config$.subscribe((config) => {
@@ -64,6 +79,7 @@ export class DashboardComponent implements OnInit {
       this.inventarioService.getLotes$(),
     ]).pipe(
       map(([inventarios, caja, clientes, lotes]) => {
+        // --- CÁLCULOS GLOBALES ---
         const valorInventario = calcularValorInventario(inventarios);
         const totalBolsas = inventarios.reduce(
           (sum, inv) => sum + inv.cantidad,
@@ -78,23 +94,45 @@ export class DashboardComponent implements OnInit {
         ).length;
         const rendimientoPromedio = calcularRendimientoPromedio(lotes);
 
-        const efectivoHoy =
-          (caja?.efectivoVentas || 0) + (caja?.efectivoAbonos || 0);
-        const utilidadHoy =
-          (caja?.efectivoVentas || 0) - (caja?.costoVendido || 0);
+        // --- CÁLCULOS DEL DÍA ---
+        const efectivoVentas = caja?.efectivoVentas || 0;
+        const efectivoAbonos = caja?.efectivoAbonos || 0;
+        const ventasFiado = caja?.ventasFiado || 0;
+        const costoVendido = caja?.costoVendido || 0;
+
+        // Flujo de Caja (Lo que tienes en la mano)
+        const efectivoHoy = efectivoVentas + efectivoAbonos;
+
+        // Estado de Resultados (Lo que realmente vendiste y ganaste)
+        const ventasTotalesHoy = efectivoVentas + ventasFiado;
+        const utilidadBrutaHoy = ventasTotalesHoy - costoVendido;
+
+        const margenHoy =
+          ventasTotalesHoy > 0
+            ? (utilidadBrutaHoy / ventasTotalesHoy) * 100
+            : 0;
+
+        // Para gráficos
+        this.chartData = {
+          inventario: valorInventario,
+          calle: dineroEnCalle,
+        };
 
         return {
           efectivoHoy,
-          utilidadHoy,
+          ventasTotalesHoy,
+          costoVendidoHoy: costoVendido,
+          utilidadBrutaHoy,
+          margenHoy,
+          ventasEfectivoHoy: efectivoVentas,
+          ventasFiadoHoy: ventasFiado,
+          abonosHoy: efectivoAbonos,
           valorInventario,
-          totalBolsas,
           dineroEnCalle,
+          capitalTotal: valorInventario + dineroEnCalle,
+          totalBolsas,
           clientesConDeuda,
           rendimientoPromedio,
-          ventasEfectivoHoy: caja?.efectivoVentas || 0,
-          ventasFiadoHoy: caja?.ventasFiado || 0,
-          abonosHoy: caja?.efectivoAbonos || 0,
-          costoVendidoHoy: caja?.costoVendido || 0,
         };
       })
     );
@@ -104,6 +142,7 @@ export class DashboardComponent implements OnInit {
     return formatearMoneda(valor);
   }
 
+  // Helpers para rendimiento
   getBestRendimiento(lotes: LoteProduccion[]): number {
     if (lotes.length === 0) return 0;
     return Math.max(...lotes.map((l) => l.bolsasResultantes));
@@ -112,5 +151,12 @@ export class DashboardComponent implements OnInit {
   getWorstRendimiento(lotes: LoteProduccion[]): number {
     if (lotes.length === 0) return 0;
     return Math.min(...lotes.map((l) => l.bolsasResultantes));
+  }
+
+  // Helper para gráfico de dona SVG
+  getCircleDashArray(percentage: number): string {
+    // Circunferencia de radio 16 aprox = 100
+    // r=15.9155, C=2*pi*r ≈ 100
+    return `${percentage}, 100`;
   }
 }

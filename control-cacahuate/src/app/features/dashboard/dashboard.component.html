@@ -1,224 +1,210 @@
 <div class="dashboard-container">
   <header class="header">
-    <h1>📊 Dashboard</h1>
-    <p class="subtitle">{{ nombreNegocio }}</p>
+    <div class="brand">
+      <h1>📊 Dashboard</h1>
+      <p class="subtitle">{{ nombreNegocio }}</p>
+    </div>
+    <!-- Fecha de hoy -->
+    <div class="fecha-badge">
+      {{ fechaHoy | date : "EEEE d MMMM" }}
+    </div>
   </header>
 
   @if (resumen$ | async; as resumen) {
-  <!-- KPIs principales -->
-  <div class="kpis-grid">
-    <div class="kpi-card efectivo">
-      <span class="kpi-icon">💵</span>
-      <span class="kpi-label">Efectivo Hoy</span>
-      <span class="kpi-valor">{{ formatearMoneda(resumen.efectivoHoy) }}</span>
-    </div>
 
-    <div class="kpi-card utilidad">
-      <span class="kpi-icon">📈</span>
-      <span class="kpi-label">Utilidad Hoy</span>
-      <span class="kpi-valor" [class.negativo]="resumen.utilidadHoy < 0">
-        {{ formatearMoneda(resumen.utilidadHoy) }}
-      </span>
-    </div>
+  <!-- SECCIÓN 1: SALUD FINANCIERA DEL DÍA -->
+  <section class="overview-section">
+    <div class="main-stats-grid">
+      <!-- Tarjeta Principal: Utilidad Real -->
+      <div class="stat-card featured utilidad">
+        <div class="icon-bg">📈</div>
+        <div class="stat-content">
+          <span class="label">Utilidad Real (Hoy)</span>
+          <span class="valor" [class.negativo]="resumen.utilidadBrutaHoy < 0">
+            {{ formatearMoneda(resumen.utilidadBrutaHoy) }}
+          </span>
+          <div class="mini-chart-container">
+            <div class="margen-pill" [class.good]="resumen.margenHoy >= 30">
+              Margen: {{ resumen.margenHoy | number : "1.0-1" }}%
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="kpi-card inventario">
-      <span class="kpi-icon">📦</span>
-      <span class="kpi-label">Valor Inventario</span>
-      <span class="kpi-valor">{{
-        formatearMoneda(resumen.valorInventario)
-      }}</span>
-      <span class="kpi-detalle">{{ resumen.totalBolsas }} bolsas</span>
+      <!-- Tarjeta Secundaria: Caja (Liquidez) -->
+      <div class="stat-card efectivo">
+        <div class="stat-content">
+          <span class="label">Dinero en Caja</span>
+          <span class="valor">{{ formatearMoneda(resumen.efectivoHoy) }}</span>
+          <span class="detalle">Ventas + Abonos</span>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <div class="kpi-card calle">
-      <span class="kpi-icon">🏃</span>
-      <span class="kpi-label">En la Calle</span>
-      <span class="kpi-valor">{{
-        formatearMoneda(resumen.dineroEnCalle)
-      }}</span>
-      <span class="kpi-detalle">{{ resumen.clientesConDeuda }} clientes</span>
-    </div>
+  <!-- SECCIÓN 2: DESGLOSE VISUAL -->
+  <div class="split-grid">
+    <!-- Columna Izquierda: Desglose de Ventas -->
+    <section class="seccion sales-breakdown">
+      <h3>📋 Movimientos del Día</h3>
+
+      <!-- Barra de Progreso Visual de Ventas -->
+      <div class="sales-bar-container">
+        @if (resumen.ventasTotalesHoy > 0) {
+        <div class="sales-bar">
+          <div
+            class="segment cash"
+            [style.flex-grow]="resumen.ventasEfectivoHoy"
+          ></div>
+          <div
+            class="segment credit"
+            [style.flex-grow]="resumen.ventasFiadoHoy"
+          ></div>
+        </div>
+        <div class="sales-legend">
+          <span class="legend-item"
+            ><span class="dot cash"></span>Efectivo ({{
+              resumen.ventasEfectivoHoy / resumen.ventasTotalesHoy | percent
+            }})</span
+          >
+          <span class="legend-item"
+            ><span class="dot credit"></span>Fiado ({{
+              resumen.ventasFiadoHoy / resumen.ventasTotalesHoy | percent
+            }})</span
+          >
+        </div>
+        } @else {
+        <p class="no-data">Sin ventas registradas hoy</p>
+        }
+      </div>
+
+      <div class="desglose-list">
+        <div class="row">
+          <span>Ventas Efectivo</span>
+          <span class="num text-success"
+            >+{{ formatearMoneda(resumen.ventasEfectivoHoy) }}</span
+          >
+        </div>
+        <div class="row">
+          <span>Ventas Fiado</span>
+          <span class="num text-warning"
+            >+{{ formatearMoneda(resumen.ventasFiadoHoy) }}</span
+          >
+        </div>
+        <div class="row">
+          <span>Abonos Recibidos</span>
+          <span class="num text-success"
+            >+{{ formatearMoneda(resumen.abonosHoy) }}</span
+          >
+        </div>
+        <div class="divider"></div>
+        <div class="row cost">
+          <span>Costo de Venta (Insumos)</span>
+          <span class="num text-danger"
+            >-{{ formatearMoneda(resumen.costoVendidoHoy) }}</span
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- Columna Derecha: Distribución de Capital -->
+    <section class="seccion capital-distribution">
+      <h3>💰 ¿Dónde está tu dinero?</h3>
+
+      <div class="capital-chart-wrapper">
+        <!-- Gráfico de Dona SVG Puro -->
+        <svg viewBox="0 0 36 36" class="donut-chart">
+          <!-- Fondo -->
+          <path
+            class="circle-bg"
+            d="M18 2.0845
+              a 15.9155 15.9155 0 0 1 0 31.831
+              a 15.9155 15.9155 0 0 1 0 -31.831"
+          />
+          <!-- Segmento Inventario -->
+          <path
+            class="circle-segment inventory"
+            [attr.stroke-dasharray]="
+              getCircleDashArray(
+                (resumen.valorInventario / resumen.capitalTotal) * 100
+              )
+            "
+            d="M18 2.0845
+              a 15.9155 15.9155 0 0 1 0 31.831
+              a 15.9155 15.9155 0 0 1 0 -31.831"
+          />
+        </svg>
+        <div class="chart-center-text">
+          <span class="label">Capital Total</span>
+          <span class="value">{{ formatearMoneda(resumen.capitalTotal) }}</span>
+        </div>
+      </div>
+
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="icon-box inventory">📦</div>
+          <div class="info">
+            <span class="type">Inventario</span>
+            <span class="amount">{{
+              formatearMoneda(resumen.valorInventario)
+            }}</span>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="icon-box debt">🏃</div>
+          <div class="info">
+            <span class="type">En la Calle (Deuda)</span>
+            <span class="amount">{{
+              formatearMoneda(resumen.dineroEnCalle)
+            }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <!-- Rendimiento -->
-  <section class="seccion rendimiento-seccion">
-    <h2>⚡ Rendimiento de Producción</h2>
-    <div class="rendimiento-contenido">
-      <div class="rendimiento-principal">
-        <span class="numero">{{ resumen.rendimientoPromedio || "—" }}</span>
-        <span class="texto">bolsas promedio por kilo</span>
-      </div>
-      @if (lotes$ | async; as lotes) { @if (lotes.length > 0) {
-      <div class="rendimiento-stats">
-        <div class="stat">
-          <span class="label">Mejor</span>
-          <span class="valor mejor">{{ getBestRendimiento(lotes) }}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Peor</span>
-          <span class="valor peor">{{ getWorstRendimiento(lotes) }}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Lotes</span>
-          <span class="valor">{{ lotes.length }}</span>
-        </div>
-      </div>
-      } }
+  <!-- SECCIÓN 3: RENDIMIENTO DE PRODUCCIÓN -->
+  <section class="seccion production-stats">
+    <div class="header-row">
+      <h3>⚡ Eficiencia de Cocina</h3>
+      <span class="badge-avg"
+        >{{ resumen.rendimientoPromedio }} bolsas/lote</span
+      >
     </div>
+
+    @if (lotes$ | async; as lotes) { @if (lotes.length > 0) {
+    <div class="stats-pills">
+      <div class="stat-pill best">
+        <span class="label">Mejor</span>
+        <span class="val">{{ getBestRendimiento(lotes) }}</span>
+      </div>
+      <div class="stat-pill worst">
+        <span class="label">Peor</span>
+        <span class="val">{{ getWorstRendimiento(lotes) }}</span>
+      </div>
+      <div class="stat-pill count">
+        <span class="label">Total Lotes</span>
+        <span class="val">{{ lotes.length }}</span>
+      </div>
+    </div>
+    } @else {
+    <p class="empty-msg">Registra tu primer lote para ver estadísticas</p>
+    } }
   </section>
 
-  <!-- Desglose del día -->
-  <section class="seccion">
-    <h2>📋 Desglose del Día</h2>
-    <div class="desglose-lista">
-      <div class="desglose-item">
-        <span class="label">Ventas efectivo:</span>
-        <span class="valor positivo">{{
-          formatearMoneda(resumen.ventasEfectivoHoy)
-        }}</span>
-      </div>
-      <div class="desglose-item">
-        <span class="label">Abonos recibidos:</span>
-        <span class="valor positivo">{{
-          formatearMoneda(resumen.abonosHoy)
-        }}</span>
-      </div>
-      <div class="desglose-item">
-        <span class="label">Ventas fiadas:</span>
-        <span class="valor fiado">{{
-          formatearMoneda(resumen.ventasFiadoHoy)
-        }}</span>
-      </div>
-      <div class="desglose-item separador">
-        <span class="label">Costo de lo vendido:</span>
-        <span class="valor negativo"
-          >-{{ formatearMoneda(resumen.costoVendidoHoy) }}</span
-        >
-      </div>
-    </div>
-  </section>
-
-  <!-- Resumen financiero -->
-  <section class="seccion resumen-financiero">
-    <h2>💰 Resumen Financiero</h2>
-    <div class="financiero-grid">
-      <div class="financiero-item">
-        <span class="label">Capital en inventario</span>
-        <span class="valor">{{
-          formatearMoneda(resumen.valorInventario)
-        }}</span>
-      </div>
-      <div class="financiero-item">
-        <span class="label">Capital en calle (fiados)</span>
-        <span class="valor">{{ formatearMoneda(resumen.dineroEnCalle) }}</span>
-      </div>
-      <div class="financiero-item total">
-        <span class="label">Capital total trabajando</span>
-        <span class="valor">{{
-          formatearMoneda(resumen.valorInventario + resumen.dineroEnCalle)
-        }}</span>
-      </div>
-    </div>
-  </section>
-  } @else {
-  <!-- SKELETON LOADING -->
-  <div class="cards-grid">
-    <!-- Skeleton Ventas -->
-    <div
-      class="stat-card"
-      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
-    >
-      <app-skeleton
-        width="40%"
-        height="14px"
-        style="margin-bottom: 8px"
-      ></app-skeleton>
-      <app-skeleton
-        width="70%"
-        height="32px"
-        style="margin-bottom: 4px"
-      ></app-skeleton>
-      <app-skeleton width="50%" height="12px"></app-skeleton>
-    </div>
-
-    <!-- Skeleton Abonos -->
-    <div
-      class="stat-card"
-      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
-    >
-      <app-skeleton
-        width="40%"
-        height="14px"
-        style="margin-bottom: 8px"
-      ></app-skeleton>
-      <app-skeleton
-        width="70%"
-        height="32px"
-        style="margin-bottom: 4px"
-      ></app-skeleton>
-      <app-skeleton width="50%" height="12px"></app-skeleton>
-    </div>
-
-    <!-- Skeleton Fiado -->
-    <div
-      class="stat-card"
-      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
-    >
-      <app-skeleton
-        width="40%"
-        height="14px"
-        style="margin-bottom: 8px"
-      ></app-skeleton>
-      <app-skeleton
-        width="70%"
-        height="32px"
-        style="margin-bottom: 4px"
-      ></app-skeleton>
-      <app-skeleton width="50%" height="12px"></app-skeleton>
-    </div>
-
-    <!-- Skeleton Total -->
-    <div
-      class="stat-card"
-      style="background: #2d2d44; border-left: 4px solid #3d3d5c"
-    >
-      <app-skeleton
-        width="30%"
-        height="14px"
-        style="margin-bottom: 8px"
-      ></app-skeleton>
-      <app-skeleton
-        width="80%"
-        height="40px"
-        style="margin-bottom: 4px"
-      ></app-skeleton>
-      <app-skeleton width="40%" height="12px"></app-skeleton>
-    </div>
-  </div>
-  }
-  <div class="acciones-rapidas" style="margin-top: 24px">
-    <button
-      class="btn-corte"
-      routerLink="/corte-caja"
-      style="
-        width: 100%;
-        padding: 16px;
-        background: linear-gradient(135deg, #6366f1, #4f46e5);
-        border: none;
-        border-radius: 12px;
-        color: white;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
-        transition: transform 0.2s;
-      "
-    >
-      <span>✂️</span> Realizar Corte de Caja
+  <!-- ACCIÓN RÁPIDA -->
+  <div class="actions-area">
+    <button class="btn-corte" routerLink="/corte-caja" disabled>
+      <span class="icon">✂️</span> Realizar Corte de Caja (Próximamente)
     </button>
   </div>
+
+  } @else {
+  <!-- SKELETON LOADING -->
+  <div class="loading-grid">
+    <app-skeleton height="120px" borderRadius="16px"></app-skeleton>
+    <app-skeleton height="200px" borderRadius="16px"></app-skeleton>
+    <app-skeleton height="200px" borderRadius="16px"></app-skeleton>
+  </div>
+  }
 </div>

@@ -1,319 +1,433 @@
+// Variables
+$bg-dark: #0f0f1a;
+$card-bg: #1e1e32;
+$text-light: #ffffff;
+$accent: #f59e0b;
+$success: #22c55e;
+$danger: #ef4444;
+$info: #3b82f6;
+$purple: #8b5cf6;
+
 .dashboard-container {
   padding: 16px;
-  max-width: 600px;
+  max-width: 800px; // Un poco más ancho para las gráficas
   margin: 0 auto;
+  padding-bottom: 100px;
 }
 
 .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 24px;
+
   h1 {
     font-size: 24px;
     font-weight: 700;
-    margin-bottom: 4px;
+    margin: 0;
+    background: linear-gradient(to right, #fff, #aaa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
+
   .subtitle {
-    color: #888;
-    font-size: 14px;
+    color: #666;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .fecha-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #aaa;
+    font-weight: 500;
   }
 }
 
-.cards-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+// === GRID PRINCIPAL ===
+.overview-section {
   margin-bottom: 20px;
+}
+
+.main-stats-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr; // Utilidad más grande
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
-  background: #1e1e32;
+  background: $card-bg;
   border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  border-left: 4px solid;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 
   .label {
+    display: block;
     font-size: 12px;
     color: #888;
-    margin-bottom: 8px;
     text-transform: uppercase;
+    margin-bottom: 8px;
     letter-spacing: 0.5px;
   }
+
   .valor {
-    font-size: 24px;
+    display: block;
+    font-size: 28px;
     font-weight: 700;
-    color: white;
-    margin-bottom: 4px;
+    color: #fff;
+    line-height: 1;
+
+    &.negativo {
+      color: $danger;
+    }
   }
+
   .detalle {
-    font-size: 11px;
+    font-size: 12px;
     color: #666;
-  }
-
-  &.principal {
-    border-color: #22c55e;
-    .valor {
-      color: #22c55e;
-    }
-  }
-  &.secundaria {
-    border-color: #3b82f6;
-    .valor {
-      color: #3b82f6;
-    }
-  }
-  &.terciaria {
-    border-color: #f59e0b;
-    .valor {
-      color: #f59e0b;
-    }
-  }
-
-  &.total {
-    grid-column: 1 / -1; // Ocupa todo el ancho
-    background: linear-gradient(135deg, #1e1e32, #2d2d44);
-    border-color: #8b5cf6;
-    align-items: center;
-    text-align: center;
-    padding: 24px;
-
-    .valor.gigante {
-      font-size: 42px;
-      color: #8b5cf6;
-    }
-    .label {
-      color: #a78bfa;
-    }
-  }
-}
-
-.btn-corte:active {
-  transform: scale(0.98);
-}
-
-.kpis-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.kpi-card {
-  border-radius: 16px;
-  padding: 16px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  &.efectivo {
-    background: linear-gradient(135deg, #22c55e22, #16a34a11);
-    border: 1px solid #22c55e44;
-
-    .kpi-valor {
-      color: #22c55e;
-    }
+    margin-top: 6px;
+    display: block;
   }
 
   &.utilidad {
-    background: linear-gradient(135deg, #3b82f622, #2563eb11);
-    border: 1px solid #3b82f644;
+    background: linear-gradient(145deg, #1e1e32, #252540);
+    border-left: 4px solid $info;
 
-    .kpi-valor {
-      color: #3b82f6;
+    .valor {
+      color: $info;
+    }
 
-      &.negativo {
-        color: #ef4444;
-      }
+    .icon-bg {
+      position: absolute;
+      right: -10px;
+      bottom: -10px;
+      font-size: 80px;
+      opacity: 0.05;
+      pointer-events: none;
     }
   }
 
-  &.inventario {
-    background: linear-gradient(135deg, #8b5cf622, #7c3aed11);
-    border: 1px solid #8b5cf644;
-
-    .kpi-valor {
-      color: #8b5cf6;
+  &.efectivo {
+    border-left: 4px solid $success;
+    .valor {
+      color: $success;
     }
   }
+}
 
-  &.calle {
-    background: linear-gradient(135deg, #f59e0b22, #d9770611);
-    border: 1px solid #f59e0b44;
+.margen-pill {
+  margin-top: 12px;
+  display: inline-block;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba($danger, 0.15);
+  color: $danger;
+  font-weight: 600;
 
-    .kpi-valor {
-      color: #f59e0b;
-    }
+  &.good {
+    background: rgba($success, 0.15);
+    color: $success;
   }
+}
 
-  .kpi-icon {
-    font-size: 20px;
-  }
+// === GRID DIVIDIDO (Ventas vs Capital) ===
+.split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
 
-  .kpi-label {
-    font-size: 11px;
-    color: #888;
-    text-transform: uppercase;
-  }
-
-  .kpi-valor {
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .kpi-detalle {
-    font-size: 11px;
-    color: #888;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
   }
 }
 
 .seccion {
-  background: #1e1e32;
+  background: $card-bg;
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid #2d2d44;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 
-  h2 {
-    font-size: 14px;
-    color: #888;
+  h3 {
+    font-size: 15px;
+    color: #fff;
     margin-bottom: 16px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-weight: 600;
   }
 }
 
-.rendimiento-seccion {
-  .rendimiento-contenido {
-    text-align: center;
-  }
+// Barra de Ventas Visual
+.sales-bar-container {
+  margin-bottom: 20px;
 
-  .rendimiento-principal {
-    margin-bottom: 16px;
-
-    .numero {
-      display: block;
-      font-size: 42px;
-      font-weight: 700;
-      color: #f59e0b;
-    }
-
-    .texto {
-      font-size: 13px;
-      color: #888;
-    }
-  }
-
-  .rendimiento-stats {
+  .sales-bar {
+    height: 12px;
+    background: #333;
+    border-radius: 6px;
     display: flex;
-    justify-content: space-around;
-    border-top: 1px solid #2d2d44;
-    padding-top: 16px;
+    overflow: hidden;
+    margin-bottom: 8px;
 
-    .stat {
-      text-align: center;
-
-      .label {
-        display: block;
-        font-size: 11px;
-        color: #888;
-        margin-bottom: 4px;
+    .segment {
+      height: 100%;
+      &.cash {
+        background: $success;
       }
+      &.credit {
+        background: $accent;
+      }
+    }
+  }
 
-      .valor {
-        font-weight: 600;
-        font-size: 16px;
+  .sales-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: #aaa;
 
-        &.mejor {
-          color: #22c55e;
-        }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
 
-        &.peor {
-          color: #ef4444;
-        }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .dot.cash {
+        background: $success;
+      }
+      .dot.credit {
+        background: $accent;
       }
     }
   }
 }
 
-.desglose-lista {
+.desglose-list {
+  .row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #ccc;
+
+    .num {
+      font-weight: 600;
+    }
+    .text-success {
+      color: $success;
+    }
+    .text-warning {
+      color: $accent;
+    }
+    .text-danger {
+      color: $danger;
+    }
+
+    &.cost {
+      opacity: 0.8;
+      font-size: 12px;
+    }
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 8px 0;
+  }
+}
+
+// Gráfico Dona SVG
+.capital-distribution {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-.desglose-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.capital-chart-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 20px auto;
 
-  &.separador {
-    border-top: 1px solid #2d2d44;
-    padding-top: 10px;
-    margin-top: 4px;
-  }
+  .donut-chart {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); // Empezar desde arriba
 
-  .label {
-    color: #aaa;
-  }
-
-  .valor {
-    font-weight: 600;
-
-    &.positivo {
-      color: #22c55e;
+    .circle-bg {
+      fill: none;
+      stroke: rgba($accent, 0.1); // Color base (Calle)
+      stroke-width: 3.8;
     }
 
-    &.fiado {
-      color: #f59e0b;
+    .circle-segment.inventory {
+      fill: none;
+      stroke: $purple; // Color segmento
+      stroke-width: 3.8;
+      stroke-linecap: round;
+      transition: stroke-dasharray 1s ease;
     }
+  }
 
-    &.negativo {
-      color: #ef4444;
+  .chart-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+
+    .label {
+      display: block;
+      font-size: 10px;
+      color: #888;
+    }
+    .value {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
     }
   }
 }
 
-.resumen-financiero {
-  .financiero-grid {
+.chart-legend {
+  .legend-item {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 12px;
-  }
+    margin-bottom: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    border-radius: 8px;
 
-  .financiero-item {
+    .icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+
+      &.inventory {
+        background: rgba($purple, 0.2);
+        color: $purple;
+      }
+      &.debt {
+        background: rgba($accent, 0.2);
+        color: $accent;
+      }
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+
+      .type {
+        font-size: 11px;
+        color: #aaa;
+      }
+      .amount {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+      }
+    }
+  }
+}
+
+// Stats Producción
+.production-stats {
+  .header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
-    background: #2d2d44;
-    border-radius: 10px;
+    margin-bottom: 16px;
 
-    &.total {
-      background: linear-gradient(135deg, #f59e0b22, #d9770611);
-      border: 1px solid #f59e0b44;
+    h3 {
+      margin: 0;
+    }
 
-      .valor {
-        color: #f59e0b;
-        font-size: 18px;
+    .badge-avg {
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: #fff;
+    }
+  }
+
+  .stats-pills {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+
+    .stat-pill {
+      flex: 1;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 10px;
+
+      .label {
+        display: block;
+        font-size: 10px;
+        color: #888;
+        margin-bottom: 4px;
       }
-    }
+      .val {
+        font-weight: 700;
+        font-size: 16px;
+      }
 
-    .label {
-      color: #aaa;
-      font-size: 13px;
-    }
-
-    .valor {
-      font-weight: 700;
-      font-size: 16px;
+      &.best .val {
+        color: $success;
+      }
+      &.worst .val {
+        color: $danger;
+      }
+      &.count .val {
+        color: #fff;
+      }
     }
   }
 }
 
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #888;
+.btn-corte {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.7; // Disabled look
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.loading-grid {
+  display: grid;
+  gap: 16px;
 }
