@@ -1,9 +1,9 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Sabor } from '../models/interfaces';
 
-// Interfaz local para el item del carrito
+// Definimos la interfaz del Item aquí para que sea consistente
 export interface ItemCarrito {
-  sabor: Sabor & { cantidad?: number }; // Extendemos para incluir stock visual si se requiere
+  sabor: Sabor; // Guardamos el sabor base
   cantidad: number;
   precioVenta: number;
 }
@@ -12,10 +12,10 @@ export interface ItemCarrito {
   providedIn: 'root',
 })
 export class CarritoService {
-  // Usamos Signals para un manejo de estado reactivo y moderno
+  // Signal privado para el estado
   private _carrito = signal<ItemCarrito[]>([]);
 
-  // Selectores computados (se actualizan solos cuando cambia el carrito)
+  // Selectores públicos (solo lectura)
   readonly carrito = computed(() => this._carrito());
 
   readonly total = computed(() =>
@@ -30,31 +30,27 @@ export class CarritoService {
   );
 
   constructor() {
-    // Opcional: Recuperar de localStorage al iniciar
-    const guardado = localStorage.getItem('carrito_cacahuate');
-    if (guardado) {
-      this._carrito.set(JSON.parse(guardado));
-    }
+    this.cargarDeStorage();
   }
 
+  // Aceptamos el Sabor base y los datos de venta por separado
   agregarItem(sabor: Sabor, precioVenta: number, stockDisponible: number) {
     this._carrito.update((items) => {
       const itemExistente = items.find((i) => i.sabor.id === sabor.id);
-
-      // Validar stock global antes de agregar
       const cantidadActual = itemExistente ? itemExistente.cantidad : 0;
+
+      // Validación de seguridad (aunque el componente ya valida, doble check no sobra)
       if (cantidadActual >= stockDisponible) {
-        // Podríamos retornar false o lanzar evento, pero por ahora solo no agrega
         return items;
       }
 
       if (itemExistente) {
-        // Si existe, aumentamos cantidad creando una nueva referencia del array
+        // Actualizamos inmutablemente
         return items.map((i) =>
           i.sabor.id === sabor.id ? { ...i, cantidad: i.cantidad + 1 } : i
         );
       } else {
-        // Si no, lo agregamos
+        // Agregamos nuevo
         return [...items, { sabor, cantidad: 1, precioVenta }];
       }
     });
@@ -71,7 +67,6 @@ export class CarritoService {
           i.sabor.id === saborId ? { ...i, cantidad: i.cantidad - 1 } : i
         );
       } else {
-        // Si es 1, lo eliminamos
         return items.filter((i) => i.sabor.id !== saborId);
       }
     });
@@ -89,6 +84,24 @@ export class CarritoService {
   }
 
   private guardarEnStorage() {
-    localStorage.setItem('carrito_cacahuate', JSON.stringify(this._carrito()));
+    try {
+      localStorage.setItem(
+        'carrito_cacahuate',
+        JSON.stringify(this._carrito())
+      );
+    } catch (e) {
+      console.error('Error guardando carrito', e);
+    }
+  }
+
+  private cargarDeStorage() {
+    try {
+      const guardado = localStorage.getItem('carrito_cacahuate');
+      if (guardado) {
+        this._carrito.set(JSON.parse(guardado));
+      }
+    } catch (e) {
+      console.error('Error cargando carrito', e);
+    }
   }
 }

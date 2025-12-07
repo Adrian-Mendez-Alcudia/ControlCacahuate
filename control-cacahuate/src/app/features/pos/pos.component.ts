@@ -11,7 +11,7 @@ import { Sabor, Cliente } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
 import { Observable, combineLatest, map, tap } from 'rxjs';
 
-// Interfaz local para la vista
+// Interfaz extendida localmente para mostrar stock y costos
 interface SaborConInventario extends Sabor {
   cantidad: number;
   costoPromedio: number;
@@ -32,12 +32,13 @@ export class PosComponent implements OnInit {
   private configuracionService = inject(ConfiguracionService);
   public carritoService = inject(CarritoService);
 
-  // Observables para la vista
+  // Observables para el HTML
   saboresConInventario$!: Observable<SaborConInventario[]>;
   clientes$!: Observable<Cliente[]>;
 
-  // Variables locales para lógica síncrona
-  saboresList: SaborConInventario[] = [];
+  // "Fuente de la Verdad" local para búsquedas rápidas
+  // Esto evita problemas de tipos al buscar un producto por ID
+  private saboresMap = new Map<string, SaborConInventario>();
 
   precioVenta = 10;
   efectivoHoy = 0;
@@ -54,7 +55,7 @@ export class PosComponent implements OnInit {
   mensajeError = false;
 
   ngOnInit() {
-    // 1. Combinamos datos y guardamos una copia local en 'saboresList'
+    // Cargar y combinar datos
     this.saboresConInventario$ = combineLatest([
       this.saboresService.getSabores$(),
       this.inventarioService.getInventario$(),
@@ -70,8 +71,9 @@ export class PosComponent implements OnInit {
         });
       }),
       tap((sabores) => {
-        // Guardamos la lista actualizada para usarla en agregarAlCarrito
-        this.saboresList = sabores;
+        // Actualizamos nuestro mapa local para acceso rápido
+        this.saboresMap.clear();
+        sabores.forEach((s) => this.saboresMap.set(s.id, s));
       })
     );
 
@@ -97,38 +99,40 @@ export class PosComponent implements OnInit {
 
   // ========== ACCIONES DEL CARRITO ==========
 
-  // CORRECCIÓN: Ahora aceptamos cualquier objeto que tenga un ID (Sabor o SaborConInventario)
-  agregarAlCarrito(saborPartial: { id: string }) {
-    // Buscamos el sabor completo con sus datos de inventario actuales
-    const saborCompleto = this.saboresList.find(
-      (s) => s.id === saborPartial.id
-    );
+  // CORRECCIÓN CLAVE: Recibimos un objeto parcial que solo necesita ID.
+  // Esto permite llamar la función desde el grid (SaborConInventario) o desde el carrito (ItemCarrito.sabor)
+  agregarAlCarrito(item: { id: string }) {
+    // Buscamos la información "oficial" y actualizada en nuestro mapa
+    const productoReal = this.saboresMap.get(item.id);
 
-    if (!saborCompleto) {
-      this.mostrarMensaje('Error al localizar el producto', true);
+    if (!productoReal) {
+      this.mostrarMensaje(
+        'Producto no disponible o sin inventario cargado',
+        true
+      );
       return;
     }
 
     const cantidadEnCarrito = this.carritoService.obtenerCantidad(
-      saborCompleto.id
+      productoReal.id
     );
 
-    // Validamos contra el stock real
-    if (cantidadEnCarrito >= saborCompleto.cantidad) {
+    // Validamos stock
+    if (cantidadEnCarrito >= productoReal.cantidad) {
       this.mostrarMensaje('No hay suficiente stock', true);
       return;
     }
 
-    // Pasamos el sabor completo al servicio
+    // Delegamos al servicio pasando los datos correctos
     this.carritoService.agregarItem(
-      saborCompleto,
+      productoReal,
       this.precioVenta,
-      saborCompleto.cantidad
+      productoReal.cantidad
     );
   }
 
-  restarDelCarrito(sabor: { id: string }) {
-    this.carritoService.restarItem(sabor.id);
+  restarDelCarrito(item: { id: string }) {
+    this.carritoService.restarItem(item.id);
   }
 
   // ========== MODALES ==========
@@ -169,6 +173,7 @@ export class PosComponent implements OnInit {
 
     try {
       for (const item of items) {
+        // Procesamos item por item según cantidad
         for (let i = 0; i < item.cantidad; i++) {
           const resultado = await this.ventasService.procesarVenta({
             saborId: item.sabor.id,

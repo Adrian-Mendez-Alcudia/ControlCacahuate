@@ -28,7 +28,7 @@
       role="button"
       tabindex="0"
     >
-      <!-- Badge de cantidad en carrito (Usando el servicio) -->
+      <!-- Badge de cantidad en carrito -->
       @if (carritoService.obtenerCantidad(sabor.id) > 0) {
       <span class="badge-cantidad">{{
         carritoService.obtenerCantidad(sabor.id)
@@ -105,7 +105,6 @@
           <span class="nombre">{{ item.sabor.nombre }}</span>
         </div>
         <div class="controles-cantidad">
-          <!-- OJO: Aquí llamamos a los métodos del TS que a su vez llaman al servicio -->
           <button
             class="btn-qty"
             (click)="carritoService.restarItem(item.sabor.id)"
@@ -113,10 +112,7 @@
             -
           </button>
           <span class="qty">{{ item.cantidad }}</span>
-          <!-- Nota: Para agregar desde aquí necesitamos el objeto sabor completo, que ya viene en 'item.sabor' -->
-          <!-- Pero necesitamos el stock disponible real para validar. -->
-          <!-- Por simplicidad en esta vista, asumimos que puede sumar, o idealmente deberíamos pasar el stock -->
-          <!-- Una mejora rápida es deshabilitar si llega al tope, pero por ahora lo dejamos simple -->
+          <!-- AQUI ESTABA EL ERROR POTENCIAL: Pasamos item.sabor que solo tiene ID garantizado, pero nuestra funcion en TS lo maneja -->
           <button class="btn-qty" (click)="agregarAlCarrito(item.sabor)">
             +
           </button>
