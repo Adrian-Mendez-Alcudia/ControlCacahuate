@@ -1,228 +1,195 @@
 <div class="pos-container">
-  <!-- Header -->
+  <!-- Header Minimalista -->
   <header class="header">
-    <h1>🥜 Control Cacahuate</h1>
-    <p class="subtitle">Toca los sabores para agregar al carrito</p>
+    <div class="brand">
+      <span class="logo">🥜</span>
+      <h1>Control Cacahuate</h1>
+    </div>
+    <p class="subtitle">Punto de Venta</p>
   </header>
 
-  <!-- Mensaje de feedback -->
+  <!-- Notificaciones Flotantes -->
   @if (mensaje) {
-  <div class="mensaje" [class.error]="mensajeError">{{ mensaje }}</div>
+  <div class="toast-notification" [class.error]="mensajeError">
+    {{ mensaje }}
+  </div>
   }
 
-  <!-- Grid de sabores -->
-  <div class="sabores-grid">
+  <!-- Grid de Productos -->
+  <div class="grid-productos">
     @if (saboresConInventario$ | async; as sabores) { @if (sabores.length === 0)
     {
     <div class="empty-state">
-      <span class="emoji">🥜</span>
-      <p>No hay sabores configurados</p>
-      <p class="hint">Ve a <strong>Config</strong> para agregar tus sabores</p>
+      <div class="icon">📦</div>
+      <h3>Sin productos</h3>
+      <p>Agrega sabores en configuración</p>
     </div>
     } @else { @for (sabor of sabores; track sabor.id) {
+    <!-- Tarjeta de Producto -->
     <div
-      class="sabor-btn"
+      class="producto-card"
       [class.sin-stock]="sabor.cantidad <= 0"
-      [style.--sabor-color]="sabor.color"
+      [style.--card-color]="sabor.color"
       (click)="agregarAlCarrito(sabor)"
-      role="button"
-      tabindex="0"
     >
-      <!-- Badge de cantidad en carrito -->
-      @if (carritoService.obtenerCantidad(sabor.id) > 0) {
-      <span class="badge-cantidad">{{
-        carritoService.obtenerCantidad(sabor.id)
-      }}</span>
-
-      <!-- Botón para restar directo en la tarjeta -->
+      <!-- Badge Cantidad (si hay en carrito) -->
+      @if (getCantidadEnCarrito(sabor.id) > 0) {
+      <div class="badge-cantidad">
+        {{ getCantidadEnCarrito(sabor.id) }}
+      </div>
+      <!-- Botón Restar Rápido (evita abrir el modal solo para restar 1) -->
       <button
-        class="btn-menos-card"
+        class="btn-restar-rapido"
         (click)="$event.stopPropagation(); restarDelCarrito(sabor)"
       >
         -
       </button>
       }
 
-      <span class="emoji">{{ sabor.emoji }}</span>
-      <span class="nombre">{{ sabor.nombre }}</span>
-      <span class="stock" [class.agotado]="sabor.cantidad <= 0">
-        @if (sabor.cantidad > 0) {
-        {{ sabor.cantidad }} disponibles } @else { Sin stock }
-      </span>
-      <span class="precio">{{ formatearMoneda(precioVenta) }}</span>
+      <div class="card-content">
+        <span class="emoji">{{ sabor.emoji }}</span>
+        <span class="nombre">{{ sabor.nombre }}</span>
+
+        <div class="stock-pill" [class.agotado]="sabor.cantidad <= 0">
+          {{ sabor.cantidad > 0 ? sabor.cantidad + " disp." : "AGOTADO" }}
+        </div>
+      </div>
     </div>
     } } } @else {
-    <!-- AQUÍ ES DONDE USAMOS EL SKELETON (Esto es lo que faltaba) -->
+    <!-- Skeletons de carga -->
     @for (i of [1,2,3,4,5,6]; track i) {
-    <div
-      class="sabor-btn"
-      style="border-color: #3d3d5c; background: #2d2d44; cursor: default"
-    >
-      <!-- Emoji skeleton -->
-      <app-skeleton width="40px" height="40px" shape="circle"></app-skeleton>
-      <!-- Nombre skeleton -->
-      <app-skeleton width="70%" height="16px"></app-skeleton>
-      <!-- Stock badge skeleton -->
-      <app-skeleton
-        width="50%"
-        height="20px"
-        borderRadius="12px"
-      ></app-skeleton>
-      <!-- Precio skeleton -->
-      <app-skeleton width="40%" height="24px"></app-skeleton>
-    </div>
+    <div class="skeleton-card"></div>
     } }
   </div>
 
-  <!-- Resumen del día (Solo si carrito vacío) -->
+  <!-- Resumen Footer (solo si no hay carrito activo) -->
   @if (carritoService.cantidadItems() === 0) {
-  <div class="resumen-dia">
-    <h3>Resumen del día</h3>
-    <div class="resumen-row">
-      <span>💵 Efectivo:</span>
-      <span class="efectivo">{{ formatearMoneda(efectivoHoy) }}</span>
+  <div class="resumen-footer">
+    <div class="stat">
+      <span class="label">Ventas Hoy</span>
+      <span class="valor cash">{{ formatearMoneda(efectivoHoy) }}</span>
     </div>
-    <div class="resumen-row">
-      <span>📝 Fiado hoy:</span>
-      <span class="fiado">{{ formatearMoneda(fiadoHoy) }}</span>
+    <div class="divider"></div>
+    <div class="stat">
+      <span class="label">Fiado Hoy</span>
+      <span class="valor credit">{{ formatearMoneda(fiadoHoy) }}</span>
     </div>
   </div>
   }
 </div>
 
-<!-- Barra de Cobro Flotante -->
+<!-- Barra de Acción Flotante (Carrito Activo) -->
 @if (carritoService.cantidadItems() > 0) {
-<div class="barra-cobro">
-  <button class="btn-vaciar-rapido" (click)="carritoService.limpiarCarrito()">
-    🗑️
-  </button>
-
-  <div class="info-cobro">
-    <span class="items-count"
-      >{{ carritoService.cantidadItems() }} artículos</span
-    >
-    <span class="total">{{ formatearMoneda(carritoService.total()) }}</span>
+<div class="floating-action-bar">
+  <div class="cart-info" (click)="abrirModalCobrar()">
+    <div class="count">{{ carritoService.cantidadItems() }} items</div>
+    <div class="total">{{ formatearMoneda(carritoService.total()) }}</div>
   </div>
 
-  <button class="btn-ver-cobrar" (click)="abrirModalCobrar()">Cobrar</button>
+  <button class="btn-cobrar" (click)="abrirModalCobrar()">
+    Cobrar <span>➔</span>
+  </button>
 </div>
 }
 
-<!-- Modal de Cobro (Carrito) -->
+<!-- Modal de Cobro (Bottom Sheet) -->
 @if (modalCobroVisible) {
-<div class="modal-overlay" (click)="cerrarModal()">
-  <div class="modal" (click)="$event.stopPropagation()">
-    <h2>🛒 Tu Pedido</h2>
+<div class="modal-backdrop" (click)="cerrarModal()">
+  <div class="bottom-sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
 
-    <!-- Lista de items en carrito -->
-    <div class="carrito-lista">
-      @for (item of carritoService.carrito(); track item.sabor.id) {
-      <div class="carrito-item">
-        <div class="info-item">
-          <span class="emoji">{{ item.sabor.emoji }}</span>
-          <span class="nombre">{{ item.sabor.nombre }}</span>
-        </div>
-        <div class="controles-cantidad">
-          <button
-            class="btn-qty"
-            (click)="carritoService.restarItem(item.sabor.id)"
-          >
-            -
-          </button>
-          <span class="qty">{{ item.cantidad }}</span>
-          <button class="btn-qty" (click)="agregarAlCarrito(item.sabor)">
-            +
-          </button>
-        </div>
-        <div class="subtotal">
-          {{ formatearMoneda(item.cantidad * item.precioVenta) }}
-        </div>
-      </div>
-      }
-    </div>
-
-    <div class="total-final">
-      <span>Total a Pagar:</span>
-      <span class="monto">{{ formatearMoneda(carritoService.total()) }}</span>
-    </div>
-
-    <h3 class="metodo-pago-titulo">Selecciona método de pago:</h3>
-
-    <!-- Botón efectivo -->
-    <button
-      class="btn-efectivo"
-      (click)="venderEfectivo()"
-      [disabled]="procesando"
-    >
-      💵 Efectivo
-    </button>
-
-    <!-- Sección fiado -->
-    <div class="seccion-fiado">
-      <p class="fiado-label">📝 Fiado - Selecciona cliente:</p>
-
-      @if (clientes$ | async; as clientes) {
-      <div class="clientes-lista">
-        @for (cliente of clientes; track cliente.id) {
-        <button
-          class="cliente-btn"
-          (click)="venderFiado(cliente)"
-          [disabled]="procesando"
-        >
-          <span>{{ cliente.alias }}</span>
-          <span class="deuda" [class.tiene-deuda]="cliente.saldoPendiente > 0">
-            {{ formatearMoneda(cliente.saldoPendiente) }}
-          </span>
-        </button>
-        }
-      </div>
-      }
-
-      <button class="btn-nuevo-cliente" (click)="abrirModalNuevoCliente()">
-        + Nuevo cliente
+    <div class="sheet-header">
+      <h2>🛒 Tu Pedido</h2>
+      <button
+        class="btn-clear"
+        (click)="carritoService.limpiarCarrito(); cerrarModal()"
+      >
+        Vaciar
       </button>
     </div>
 
-    <button
-      class="btn-cancelar"
-      (click)="carritoService.limpiarCarrito(); cerrarModal()"
-    >
-      🗑️ Vaciar Carrito y Cancelar
-    </button>
-    <button class="btn-cancelar-simple" (click)="cerrarModal()">
-      Seguir comprando
-    </button>
+    <div class="cart-items-scroll">
+      @for (item of carritoService.carrito(); track item.sabor.id) {
+      <div class="cart-row">
+        <div class="row-info">
+          <span class="emoji">{{ item.sabor.emoji }}</span>
+          <span class="name">{{ item.sabor.nombre }}</span>
+        </div>
+
+        <div class="row-controls">
+          <button (click)="restarDelCarrito(item.sabor)">-</button>
+          <span class="qty">{{ item.cantidad }}</span>
+          <button (click)="agregarAlCarrito(item.sabor)">+</button>
+        </div>
+
+        <div class="row-price">
+          {{ formatearMoneda(item.subtotal) }}
+        </div>
+      </div>
+      }
+    </div>
+
+    <div class="sheet-total">
+      <span>Total a Pagar</span>
+      <span class="amount">{{ formatearMoneda(carritoService.total()) }}</span>
+    </div>
+
+    <div class="payment-actions">
+      <button
+        class="btn-pay cash"
+        (click)="venderEfectivo()"
+        [disabled]="procesando"
+      >
+        <span class="icon">💵</span> Cobrar Efectivo
+      </button>
+
+      <div class="credit-section">
+        <p>O fiar a:</p>
+        <div class="clients-scroll">
+          <button class="btn-chip add" (click)="abrirModalNuevoCliente()">
+            + Nuevo
+          </button>
+          @if (clientes$ | async; as clientes) { @for (cliente of clientes;
+          track cliente.id) {
+          <button
+            class="btn-chip"
+            (click)="venderFiado(cliente)"
+            [disabled]="procesando"
+          >
+            {{ cliente.alias }}
+          </button>
+          } }
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 }
 
-<!-- Modal nuevo cliente -->
+<!-- Modal Rápido Nuevo Cliente -->
 @if (modalNuevoCliente) {
-<div class="modal-overlay" (click)="cerrarModalNuevoCliente()">
-  <div class="modal" (click)="$event.stopPropagation()">
-    <h2>👤 Nuevo Cliente</h2>
-
-    <div class="form-group">
-      <label>Nombre o alias</label>
-      <input
-        type="text"
-        [(ngModel)]="nuevoClienteAlias"
-        placeholder="Ej: Juan Mecánico"
-        (keyup.enter)="crearClienteYFiar()"
-      />
+<div class="modal-backdrop center" (click)="cerrarModalNuevoCliente()">
+  <div class="dialog-box" (click)="$event.stopPropagation()">
+    <h3>Nuevo Cliente</h3>
+    <input
+      id="inputNuevoCliente"
+      type="text"
+      [(ngModel)]="nuevoClienteAlias"
+      placeholder="Nombre o Alias"
+      (keyup.enter)="crearClienteYFiar()"
+    />
+    <div class="dialog-actions">
+      <button class="btn-secondary" (click)="cerrarModalNuevoCliente()">
+        Cancelar
+      </button>
+      <button
+        class="btn-primary"
+        (click)="crearClienteYFiar()"
+        [disabled]="procesando"
+      >
+        Crear y Fiar
+      </button>
     </div>
-
-    <button
-      class="btn-efectivo"
-      (click)="crearClienteYFiar()"
-      [disabled]="!nuevoClienteAlias.trim() || procesando"
-    >
-      ✓ Crear y Fiar Pedido
-    </button>
-
-    <button class="btn-cancelar" (click)="cerrarModalNuevoCliente()">
-      Cancelar
-    </button>
   </div>
 </div>
 }

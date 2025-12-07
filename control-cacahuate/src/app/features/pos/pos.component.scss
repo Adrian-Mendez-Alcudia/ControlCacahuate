@@ -1,169 +1,539 @@
+// Variables
+$bg-dark: #0f0f1a;
+$card-bg: #1e1e32;
+$text-light: #ffffff;
+$accent-color: #f59e0b;
+$success-color: #22c55e;
+$danger-color: #ef4444;
+
 .pos-container {
   padding: 16px;
-  max-width: 500px;
+  padding-bottom: 120px; // Espacio para barra flotante y nav
+  max-width: 600px;
   margin: 0 auto;
-  padding-bottom: 100px;
 }
 
 .header {
-  text-align: center;
-  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 
-  h1 {
-    font-size: 24px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #f59e0b, #ef4444);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 4px;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .logo {
+      font-size: 24px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(to right, #fff, #aaa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
 
   .subtitle {
-    color: #888;
-    font-size: 13px;
+    font-size: 12px;
+    color: #666;
+    margin: 0;
   }
 }
 
-.mensaje {
-  background: #22c55e;
-  color: white;
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
-  margin-bottom: 16px;
-  animation: fadeIn 0.3s ease;
-
-  &.error {
-    background: #ef4444;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.sabores-grid {
+// Grid de Productos
+.grid-productos {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 12px;
-  margin-bottom: 20px;
 }
 
-.sabor-btn {
-  position: relative;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--sabor-color) 15%, transparent),
-    color-mix(in srgb, var(--sabor-color) 8%, transparent)
-  );
-  border: 2px solid var(--sabor-color);
+.producto-card {
+  background: $card-bg;
   border-radius: 16px;
-  padding: 20px 12px;
+  padding: 12px;
+  text-align: center;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s, border-color 0.2s;
+  cursor: pointer;
+  user-select: none;
+  aspect-ratio: 1 / 1.1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  cursor: pointer;
-  user-select: none; /* Evita selección de texto al hacer clics rápidos */
+  justify-content: center;
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
+    border-color: var(--card-color);
   }
 
   &.sin-stock {
-    opacity: 0.5;
-    border-color: #3d3d5c;
-    background: #2d2d44;
-    cursor: not-allowed;
+    opacity: 0.6;
+    filter: grayscale(0.8);
   }
 
   .emoji {
-    font-size: 36px;
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
   }
 
   .nombre {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--sabor-color);
+    line-height: 1.2;
+    color: $text-light;
+    display: block;
+    margin-bottom: 6px;
   }
 
-  .stock {
-    background: #22c55e33;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #22c55e;
+  .stock-pill {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    color: #aaa;
 
     &.agotado {
-      background: #ef444433;
-      color: #ef4444;
+      background: rgba($danger-color, 0.2);
+      color: $danger-color;
     }
   }
 
-  .precio {
-    font-size: 18px;
-    font-weight: 700;
-    color: white;
-  }
-
+  // Badge Cantidad
   .badge-cantidad {
     position: absolute;
-    top: -10px;
-    right: -10px;
-    background: #ef4444;
-    color: white;
-    width: 30px;
-    height: 30px;
+    top: -6px;
+    right: -6px;
+    background: $accent-color;
+    color: #000;
+    font-weight: 700;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 14px;
-    border: 2px solid #1e1e32;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    font-size: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 10;
+    z-index: 5;
   }
 
-  /* NUEVO: Estilo del botón restar flotante */
-  .btn-menos-card {
+  .btn-restar-rapido {
     position: absolute;
-    top: -10px;
-    left: -10px;
-    background: #3d3d5c;
-    color: white;
-    width: 30px;
-    height: 30px;
+    top: -6px;
+    left: -6px;
+    width: 24px;
+    height: 24px;
+    background: #333;
+    color: #fff;
+    border: none;
     border-radius: 50%;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 6;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 18px;
-    border: 2px solid #1e1e32;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    z-index: 11;
-    line-height: 0;
-    padding-bottom: 4px;
+    padding-bottom: 2px;
+  }
+}
 
-    &:active {
-      background: #ef4444;
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  aspect-ratio: 1 / 1.1;
+  animation: pulse 1.5s infinite;
+}
+
+// Resumen Footer (cuando no hay carrito)
+.resumen-footer {
+  margin-top: 30px;
+  background: $card-bg;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-around;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  .divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .stat {
+    text-align: center;
+    .label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .valor {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .valor.cash {
+      color: $success-color;
+    }
+    .valor.credit {
+      color: $accent-color;
     }
   }
 }
 
+// Barra Flotante
+.floating-action-bar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%); // Esto centra el elemento
+  width: 92%;
+  max-width: 580px;
+  background: rgba(30, 30, 50, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  // Animación corregida: ahora incluye el centrado en cada paso
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .cart-info {
+    padding-left: 16px;
+    cursor: pointer;
+
+    .count {
+      font-size: 12px;
+      color: #aaa;
+    }
+    .total {
+      font-size: 18px;
+      font-weight: 700;
+      color: $success-color;
+    }
+  }
+
+  .btn-cobrar {
+    background: $success-color;
+    color: #000;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.1s;
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    span {
+      font-size: 14px;
+    }
+  }
+}
+
+// Bottom Sheet Modal
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s;
+
+  &.center {
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.bottom-sheet {
+  background: #1e1e32;
+  width: 100%;
+  border-radius: 24px 24px 0 0;
+  padding: 20px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+
+  .sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    h2 {
+      font-size: 18px;
+      margin: 0;
+    }
+    .btn-clear {
+      background: none;
+      border: none;
+      color: $danger-color;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  }
+
+  .cart-items-scroll {
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 16px;
+    max-height: 300px;
+  }
+
+  .cart-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+    .row-info {
+      flex: 1;
+      .emoji {
+        margin-right: 8px;
+      }
+      .name {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
+
+    .row-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px 8px;
+      border-radius: 8px;
+      margin: 0 12px;
+
+      button {
+        width: 24px;
+        height: 24px;
+        background: #333;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .qty {
+        font-weight: 600;
+        width: 16px;
+        text-align: center;
+      }
+    }
+
+    .row-price {
+      font-weight: 700;
+      color: $accent-color;
+      font-size: 14px;
+      width: 60px;
+      text-align: right;
+    }
+  }
+
+  .sheet-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 16px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+    .amount {
+      color: $success-color;
+      font-size: 24px;
+    }
+  }
+
+  .payment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .btn-pay {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+
+      &.cash {
+        background: linear-gradient(
+          135deg,
+          $success-color,
+          darken($success-color, 10%)
+        );
+        color: #000;
+      }
+    }
+
+    .credit-section {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 12px;
+      border-radius: 12px;
+
+      p {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #888;
+      }
+
+      .clients-scroll {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+
+        .btn-chip {
+          background: #3d3d5c;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          white-space: nowrap;
+          cursor: pointer;
+          font-size: 13px;
+
+          &.add {
+            background: transparent;
+            border: 1px dashed #666;
+            color: #888;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Dialog Box (Nuevo Cliente)
+.dialog-box {
+  background: $card-bg;
+  padding: 24px;
+  border-radius: 20px;
+  width: 85%;
+  max-width: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    margin-bottom: 20px;
+
+    &:focus {
+      outline: none;
+      border-color: $accent-color;
+    }
+  }
+
+  .dialog-actions {
+    display: flex;
+    gap: 12px;
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+
+      &.btn-secondary {
+        background: transparent;
+        color: #888;
+      }
+      &.btn-primary {
+        background: $accent-color;
+        color: #000;
+      }
+    }
+  }
+}
+
+// Toasts
+.toast-notification {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%); // Centrado original
+  background: $success-color;
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 14px;
+  z-index: 3000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  // Animación corregida para el toast también
+  animation: slideDownToast 0.3s;
+
+  &.error {
+    background: $danger-color;
+    color: white;
+  }
+}
+
+// Animations
+
+// Animación POP para los badges
 @keyframes popIn {
   from {
     transform: scale(0);
@@ -173,407 +543,53 @@
   }
 }
 
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 40px 20px;
-  color: #888;
-
-  .emoji {
-    font-size: 48px;
-    display: block;
-    margin-bottom: 12px;
-  }
-
-  p {
-    margin-bottom: 8px;
-  }
-
-  .hint {
-    font-size: 13px;
-    color: #666;
-
-    strong {
-      color: #f59e0b;
-    }
-  }
-}
-
-.loading {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 40px;
-  color: #888;
-}
-
-.resumen-dia {
-  background: #1e1e32;
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid #2d2d44;
-
-  h3 {
-    font-size: 12px;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
-  }
-
-  .resumen-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    span:first-child {
-      color: #aaa;
-    }
-
-    .efectivo {
-      color: #22c55e;
-      font-weight: 700;
-    }
-
-    .fiado {
-      color: #f59e0b;
-      font-weight: 700;
-    }
-  }
-}
-
-/* Barra de Cobro Flotante */
-.barra-cobro {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  max-width: 480px;
-  background: #2d2d44;
-  border-radius: 16px;
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px; /* Espacio entre los elementos */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  border: 1px solid #f59e0b;
-  z-index: 1500;
-  animation: slideUp 0.3s ease forwards;
-
-  /* NUEVO: Botón de vaciar rápido */
-  .btn-vaciar-rapido {
-    background: #3d3d5c;
-    border: none;
-    color: #ef4444;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-
-    &:hover {
-      background: #ef444422;
-    }
-  }
-
-  .info-cobro {
-    flex: 1; /* Ocupa el espacio central */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    .items-count {
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    .total {
-      font-size: 20px;
-      font-weight: 700;
-      color: white;
-    }
-  }
-
-  .btn-ver-cobrar {
-    background: #22c55e;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
-
-    &:hover {
-      background: #16a34a;
-    }
-  }
-}
-
+// CORRECCIÓN: slideUp mantenía el 'translateY' pero olvidaba el 'translateX(-50%)'
+// Ahora lo incluimos en ambos pasos para que se mantenga centrado.
 @keyframes slideUp {
   from {
     transform: translate(-50%, 100%);
+  } // Empieza abajo, pero centrado
+  to {
+    transform: translate(-50%, 0);
+  } // Termina en su sitio, centrado
+}
+
+// Animación diferente para el modal (no necesita centrado horizontal con translate)
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+// CORRECCIÓN: slideDown para toast también necesitaba mantener el centrado
+@keyframes slideDownToast {
+  from {
+    transform: translate(-50%, -100%);
+  } // Empieza arriba (fuera), centrado
+  to {
+    transform: translate(-50%, 0);
+  } // Baja a su sitio, centrado
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+@keyframes fadeIn {
+  from {
     opacity: 0;
   }
   to {
-    transform: translate(-50%, 0);
     opacity: 1;
-  }
-}
-
-// Modal
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: flex-end;
-  z-index: 2000;
-}
-
-.modal {
-  background: #1e1e32;
-  width: 100%;
-  border-radius: 24px 24px 0 0;
-  padding: 24px;
-  max-height: 85vh;
-  overflow-y: auto;
-
-  h2 {
-    text-align: center;
-    margin-bottom: 16px;
-    font-size: 18px;
-  }
-}
-
-.carrito-lista {
-  margin-bottom: 20px;
-  max-height: 30vh;
-  overflow-y: auto;
-}
-
-.carrito-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #2d2d44;
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 8px;
-
-  .info-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-
-    .nombre {
-      font-size: 14px;
-      color: white;
-    }
-  }
-
-  .controles-cantidad {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #1e1e32;
-    padding: 4px;
-    border-radius: 8px;
-    margin: 0 10px;
-
-    .btn-qty {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      border: none;
-      background: #3d3d5c;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &:hover {
-        background: #4d4d75;
-      }
-    }
-
-    .qty {
-      font-weight: 600;
-      min-width: 20px;
-      text-align: center;
-    }
-  }
-
-  .subtotal {
-    font-weight: 700;
-    color: #f59e0b;
-    font-size: 14px;
-  }
-}
-
-.total-final {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  border-top: 1px solid #2d2d44;
-  border-bottom: 1px solid #2d2d44;
-  margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 700;
-
-  .monto {
-    color: #22c55e;
-    font-size: 24px;
-  }
-}
-
-.metodo-pago-titulo {
-  font-size: 14px;
-  color: #888;
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.btn-efectivo {
-  width: 100%;
-  padding: 16px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  border: none;
-  border-radius: 12px;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.seccion-fiado {
-  background: #2d2d44;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-
-  .fiado-label {
-    font-size: 14px;
-    color: #888;
-    margin-bottom: 12px;
-  }
-}
-
-.clientes-lista {
-  max-height: 150px;
-  overflow-y: auto;
-  margin-bottom: 12px;
-}
-
-.cliente-btn {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 8px;
-  background: #3d3d5c;
-  border: none;
-  border-radius: 8px;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  .deuda {
-    color: #22c55e;
-
-    &.tiene-deuda {
-      color: #f59e0b;
-    }
-  }
-}
-
-.btn-nuevo-cliente {
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 1px dashed #666;
-  border-radius: 8px;
-  color: #888;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-cancelar {
-  width: 100%;
-  padding: 14px;
-  background: transparent;
-  border: 1px solid #ef4444;
-  color: #ef4444;
-  border-radius: 12px;
-  font-size: 14px;
-  cursor: pointer;
-  margin-bottom: 8px;
-}
-
-.btn-cancelar-simple {
-  width: 100%;
-  padding: 14px;
-  background: transparent;
-  border: none;
-  color: #888;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.form-group {
-  margin-bottom: 20px;
-
-  label {
-    display: block;
-    font-size: 13px;
-    color: #888;
-    margin-bottom: 8px;
-  }
-
-  input {
-    width: 100%;
-    padding: 14px;
-    background: #2d2d44;
-    border: 1px solid #3d3d5c;
-    border-radius: 10px;
-    color: white;
-    font-size: 16px;
-
-    &::placeholder {
-      color: #666;
-    }
-
-    &:focus {
-      outline: none;
-      border-color: #f59e0b;
-    }
   }
 }

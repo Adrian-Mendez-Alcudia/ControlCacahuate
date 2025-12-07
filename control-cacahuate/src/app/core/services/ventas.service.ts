@@ -39,20 +39,25 @@ export class VentasService {
    */
   async procesarVenta(datos: {
     saborId: string;
-    cantidad?: number;
+    cantidad: number;
     tipoPago: 'efectivo' | 'fiado';
     clienteId?: string;
     precioVenta?: number;
+    nombreSaborSnapshot?: string;
   }): Promise<ResultadoVenta> {
-    const cantidad = datos.cantidad || 1;
+    const cantidad = datos.cantidad;
     const precioVenta =
       datos.precioVenta || this.configuracionService.getPrecioVenta();
 
-    // 1. Verificar que si es fiado, tenga cliente
+    // 1. Validaciones
+    if (cantidad <= 0) {
+      return { success: false, error: 'Cantidad inválida' };
+    }
+
     if (datos.tipoPago === 'fiado' && !datos.clienteId) {
       return {
         success: false,
-        error: 'Debe seleccionar un cliente para venta fiada',
+        error: 'Falta seleccionar cliente para fiado',
       };
     }
 
@@ -63,12 +68,18 @@ export class VentasService {
     if (!resultadoInventario.success) {
       return {
         success: false,
-        error: `Stock insuficiente. Disponible: ${resultadoInventario.inventarioRestante}`,
+        error: `Solo quedan ${resultadoInventario.inventarioRestante} bolsas disponibles`,
       };
     }
 
-    // 3. Crear registro de venta
+    // 3. Calcular montos
+    const montoTotalVenta = cantidad * precioVenta;
+    const costoTotalVenta = cantidad * resultadoInventario.costoUnitario;
+
+    // 4. Crear objeto Venta (CORRECCIÓN AQUÍ)
     const id = generarId();
+
+    // Inicializamos el objeto sin campos opcionales para evitar 'undefined'
     const venta: Venta = {
       id,
       saborId: datos.saborId,
@@ -76,29 +87,42 @@ export class VentasService {
       precioUnitario: precioVenta,
       costoUnitario: resultadoInventario.costoUnitario,
       tipoPago: datos.tipoPago,
-      clienteId: datos.clienteId,
       fecha: Timestamp.now(),
     };
 
-    // 4. Actualizar caja del día
-    const montoVenta = cantidad * precioVenta;
-    const costoVenta = cantidad * resultadoInventario.costoUnitario;
-    await this.actualizarCajaDiaria(datos.tipoPago, montoVenta, costoVenta);
-
-    // 5. Si es fiado, actualizar deuda del cliente
-    if (datos.tipoPago === 'fiado' && datos.clienteId) {
-      await this.clientesService.agregarDeuda(datos.clienteId, montoVenta);
+    // Agregamos clienteId SOLO si tiene valor real
+    if (datos.clienteId) {
+      venta.clienteId = datos.clienteId;
     }
 
-    // 6. Guardar la venta
-    await setDoc(doc(this.ventasCollection, id), venta);
+    // Agregamos nombreSaborSnapshot SOLO si tiene valor real
+    if (datos.nombreSaborSnapshot) {
+      venta.nombreSaborSnapshot = datos.nombreSaborSnapshot;
+    }
 
-    const utilidad = montoVenta - costoVenta;
-    console.log(
-      `💰 Venta: $${montoVenta} | Costo: $${costoVenta} | Utilidad: $${utilidad}`
-    );
+    // 5. Guardar en paralelo
+    const promesas: Promise<any>[] = [
+      setDoc(doc(this.ventasCollection, id), venta),
+      this.actualizarCajaDiaria(
+        datos.tipoPago,
+        montoTotalVenta,
+        costoTotalVenta
+      ),
+    ];
 
-    return { success: true, venta };
+    if (datos.tipoPago === 'fiado' && datos.clienteId) {
+      promesas.push(
+        this.clientesService.agregarDeuda(datos.clienteId, montoTotalVenta)
+      );
+    }
+
+    try {
+      await Promise.all(promesas);
+      return { success: true, venta };
+    } catch (error: any) {
+      console.error('Error crítico guardando venta:', error);
+      return { success: false, error: 'Error guardando datos de venta' };
+    }
   }
 
   /**
@@ -114,23 +138,20 @@ export class VentasService {
     const cajaSnapshot = await getDoc(cajaRef);
 
     if (cajaSnapshot.exists()) {
-      const cajaActual = cajaSnapshot.data() as CajaDiaria;
+      const caja = cajaSnapshot.data() as CajaDiaria;
 
-      await updateDoc(cajaRef, {
-        efectivoVentas:
-          tipoPago === 'efectivo'
-            ? cajaActual.efectivoVentas + montoVenta
-            : cajaActual.efectivoVentas,
-        ventasFiado:
-          tipoPago === 'fiado'
-            ? cajaActual.ventasFiado + montoVenta
-            : cajaActual.ventasFiado,
-        costoVendido: cajaActual.costoVendido + costoVenta,
-        totalEfectivo:
-          tipoPago === 'efectivo'
-            ? cajaActual.totalEfectivo + montoVenta
-            : cajaActual.totalEfectivo,
-      });
+      const updates: any = {
+        costoVendido: (caja.costoVendido || 0) + costoVenta,
+      };
+
+      if (tipoPago === 'efectivo') {
+        updates.efectivoVentas = (caja.efectivoVentas || 0) + montoVenta;
+        updates.totalEfectivo = (caja.totalEfectivo || 0) + montoVenta;
+      } else {
+        updates.ventasFiado = (caja.ventasFiado || 0) + montoVenta;
+      }
+
+      await updateDoc(cajaRef, updates);
     } else {
       const nuevaCaja: CajaDiaria = {
         fecha: fechaHoy,
@@ -140,42 +161,34 @@ export class VentasService {
         ventasFiado: tipoPago === 'fiado' ? montoVenta : 0,
         costoVendido: costoVenta,
       };
-
       await setDoc(cajaRef, nuevaCaja);
     }
   }
 
-  /**
-   * Registra un abono en la caja
-   */
   async registrarAbonoEnCaja(monto: number): Promise<void> {
     const fechaHoy = obtenerFechaHoy();
     const cajaRef = doc(this.cajaCollection, fechaHoy);
     const cajaSnapshot = await getDoc(cajaRef);
 
     if (cajaSnapshot.exists()) {
-      const cajaActual = cajaSnapshot.data() as CajaDiaria;
+      const caja = cajaSnapshot.data() as CajaDiaria;
       await updateDoc(cajaRef, {
-        efectivoAbonos: cajaActual.efectivoAbonos + monto,
-        totalEfectivo: cajaActual.totalEfectivo + monto,
+        efectivoAbonos: (caja.efectivoAbonos || 0) + monto,
+        totalEfectivo: (caja.totalEfectivo || 0) + monto,
       });
     } else {
-      const nuevaCaja: CajaDiaria = {
+      await setDoc(cajaRef, {
         fecha: fechaHoy,
         efectivoVentas: 0,
         efectivoAbonos: monto,
         totalEfectivo: monto,
         ventasFiado: 0,
         costoVendido: 0,
-      };
-      await setDoc(cajaRef, nuevaCaja);
+      });
     }
   }
 
-  /**
-   * Obtiene la caja del día actual
-   */
-  async getCajaDiaActual(): Promise<CajaDiaria | null> {
+  async getCajaDiaHoy(): Promise<CajaDiaria | null> {
     const fechaHoy = obtenerFechaHoy();
     const cajaRef = doc(this.cajaCollection, fechaHoy);
     const snapshot = await getDoc(cajaRef);
@@ -187,9 +200,6 @@ export class VentasService {
     return snapshot.data() as CajaDiaria;
   }
 
-  /**
-   * Obtiene la caja del día en tiempo real
-   */
   getCajaDia$(fecha?: string): Observable<CajaDiaria | null> {
     const fechaBuscar = fecha || obtenerFechaHoy();
     return collectionData(this.cajaCollection, { idField: 'fecha' }).pipe(
@@ -202,9 +212,6 @@ export class VentasService {
     );
   }
 
-  /**
-   * Obtiene las ventas del día
-   */
   getVentasHoy$(): Observable<Venta[]> {
     const fechaHoy = obtenerFechaHoy();
     const inicioDelDia = new Date(fechaHoy);
@@ -215,19 +222,6 @@ export class VentasService {
         (ventas as Venta[])
           .filter((v) => v.fecha.toDate() >= inicioDelDia)
           .sort((a, b) => b.fecha.toMillis() - a.fecha.toMillis())
-      )
-    );
-  }
-
-  /**
-   * Obtiene todas las ventas
-   */
-  getAllVentas$(): Observable<Venta[]> {
-    return collectionData(this.ventasCollection, { idField: 'id' }).pipe(
-      map((ventas) =>
-        (ventas as Venta[]).sort(
-          (a, b) => b.fecha.toMillis() - a.fecha.toMillis()
-        )
       )
     );
   }
