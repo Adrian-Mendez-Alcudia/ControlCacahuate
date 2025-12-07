@@ -5,9 +5,9 @@ import {
   collectionData,
   doc,
   getDoc,
-  setDoc,
   updateDoc,
   Timestamp,
+  runTransaction, // Importante para la consistencia de datos
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
 import { Inventario, LoteProduccion } from '../models/interfaces';
@@ -35,21 +35,8 @@ export class InventarioService {
   }
 
   /**
-   * Obtiene el inventario de un sabor específico
-   */
-  async getInventarioPorSabor(saborId: string): Promise<Inventario | null> {
-    const docRef = doc(this.inventarioCollection, saborId);
-    const snapshot = await getDoc(docRef);
-
-    if (!snapshot.exists()) {
-      return null;
-    }
-
-    return { saborId, ...snapshot.data() } as Inventario;
-  }
-
-  /**
-   * Registra un nuevo lote de producción y actualiza el inventario
+   * Registra un lote y actualiza inventario de forma ATÓMICA
+   * Evita corrupción de datos si falla la red a mitad del proceso.
    */
   async registrarLote(datos: {
     saborId: string;
@@ -57,58 +44,67 @@ export class InventarioService {
     bolsasResultantes: number;
     notas?: string;
   }): Promise<LoteProduccion> {
-    // 1. Calcular costo unitario del lote
-    const costoUnitario = calcularCostoUnitarioLote(
-      datos.costoKilo,
-      datos.bolsasResultantes
-    );
+    const loteId = generarId();
+    const inventarioRef = doc(this.inventarioCollection, datos.saborId);
+    const loteRef = doc(this.lotesCollection, loteId);
 
-    // 2. Crear el registro del lote
-    const id = generarId();
-    const nuevoLote: LoteProduccion = {
-      id,
-      saborId: datos.saborId,
-      costoKilo: datos.costoKilo,
-      bolsasResultantes: datos.bolsasResultantes,
-      costoUnitario,
-      fechaProduccion: Timestamp.now(),
-      notas: datos.notas,
-    };
+    // Ejecutamos todo dentro de una transacción
+    return await runTransaction(this.firestore, async (transaction) => {
+      // 1. Leer inventario actual (Lectura bloqueante para la transacción)
+      const inventarioDoc = await transaction.get(inventarioRef);
+      const inventarioActual = inventarioDoc.exists()
+        ? (inventarioDoc.data() as Inventario)
+        : null;
 
-    // 3. Obtener inventario actual
-    const inventarioActual = await this.getInventarioPorSabor(datos.saborId);
+      // 2. Calcular costos
+      const costoUnitarioLote = calcularCostoUnitarioLote(
+        datos.costoKilo,
+        datos.bolsasResultantes
+      );
 
-    // 4. Calcular nuevo costo promedio ponderado
-    const nuevoCostoPromedio = calcularCostoPromedioPonderado(
-      inventarioActual,
-      { bolsas: datos.bolsasResultantes, costoUnitario }
-    );
+      const nuevoCostoPromedio = calcularCostoPromedioPonderado(
+        inventarioActual,
+        {
+          bolsas: datos.bolsasResultantes,
+          costoUnitario: costoUnitarioLote,
+        }
+      );
 
-    // 5. Preparar nuevo inventario
-    const nuevaCantidad =
-      (inventarioActual?.cantidad || 0) + datos.bolsasResultantes;
-    const nuevoInventario: Inventario = {
-      saborId: datos.saborId,
-      cantidad: nuevaCantidad,
-      costoPromedioPonderado: nuevoCostoPromedio,
-      updatedAt: Timestamp.now(),
-    };
+      const nuevaCantidad =
+        (inventarioActual?.cantidad || 0) + datos.bolsasResultantes;
 
-    // 6. Guardar lote e inventario
-    await Promise.all([
-      setDoc(doc(this.lotesCollection, id), nuevoLote),
-      setDoc(doc(this.inventarioCollection, datos.saborId), nuevoInventario),
-    ]);
+      // 3. Preparar objetos
+      const nuevoLote: LoteProduccion = {
+        id: loteId,
+        saborId: datos.saborId,
+        costoKilo: datos.costoKilo,
+        bolsasResultantes: datos.bolsasResultantes,
+        costoUnitario: costoUnitarioLote,
+        fechaProduccion: Timestamp.now(),
+        notas: datos.notas || '',
+      };
 
-    console.log(
-      `📦 Lote registrado: ${datos.bolsasResultantes} bolsas @ $${costoUnitario}/u`
-    );
+      // 4. Escrituras (Se ejecutan todas juntas al final)
+      transaction.set(loteRef, nuevoLote);
 
-    return nuevoLote;
+      transaction.set(
+        inventarioRef,
+        {
+          saborId: datos.saborId,
+          cantidad: nuevaCantidad,
+          costoPromedioPonderado: nuevoCostoPromedio,
+          updatedAt: Timestamp.now(),
+        },
+        { merge: true }
+      );
+
+      return nuevoLote;
+    });
   }
 
   /**
    * Descuenta unidades del inventario (usado por ventas)
+   * También validado para evitar stock negativo en condiciones de carrera
    */
   async descontarInventario(
     saborId: string,
@@ -118,33 +114,47 @@ export class InventarioService {
     costoUnitario: number;
     inventarioRestante: number;
   }> {
-    const inventario = await this.getInventarioPorSabor(saborId);
+    const inventarioRef = doc(this.inventarioCollection, saborId);
 
-    if (!inventario || inventario.cantidad < cantidad) {
+    try {
+      return await runTransaction(this.firestore, async (transaction) => {
+        const docSnap = await transaction.get(inventarioRef);
+
+        if (!docSnap.exists()) {
+          throw new Error('El producto no existe en inventario');
+        }
+
+        const inventario = docSnap.data() as Inventario;
+
+        if (inventario.cantidad < cantidad) {
+          throw new Error(
+            `Stock insuficiente. Solo hay ${inventario.cantidad}`
+          );
+        }
+
+        const nuevaCantidad = inventario.cantidad - cantidad;
+
+        transaction.update(inventarioRef, {
+          cantidad: nuevaCantidad,
+          updatedAt: Timestamp.now(),
+        });
+
+        return {
+          success: true,
+          costoUnitario: inventario.costoPromedioPonderado,
+          inventarioRestante: nuevaCantidad,
+        };
+      });
+    } catch (error: any) {
+      console.warn('Error descontando inventario:', error.message);
       return {
         success: false,
         costoUnitario: 0,
-        inventarioRestante: inventario?.cantidad || 0,
+        inventarioRestante: 0, // Dato referencial en caso de error
       };
     }
-
-    const nuevaCantidad = inventario.cantidad - cantidad;
-
-    await updateDoc(doc(this.inventarioCollection, saborId), {
-      cantidad: nuevaCantidad,
-      updatedAt: Timestamp.now(),
-    });
-
-    return {
-      success: true,
-      costoUnitario: inventario.costoPromedioPonderado,
-      inventarioRestante: nuevaCantidad,
-    };
   }
 
-  /**
-   * Obtiene todos los lotes ordenados por fecha
-   */
   getLotes$(): Observable<LoteProduccion[]> {
     return collectionData(this.lotesCollection, { idField: 'id' }).pipe(
       map((lotes) =>
@@ -152,15 +162,6 @@ export class InventarioService {
           (a, b) => b.fechaProduccion.toMillis() - a.fechaProduccion.toMillis()
         )
       )
-    );
-  }
-
-  /**
-   * Obtiene los lotes de un sabor específico
-   */
-  getLotesPorSabor$(saborId: string): Observable<LoteProduccion[]> {
-    return this.getLotes$().pipe(
-      map((lotes) => lotes.filter((l) => l.saborId === saborId))
     );
   }
 }

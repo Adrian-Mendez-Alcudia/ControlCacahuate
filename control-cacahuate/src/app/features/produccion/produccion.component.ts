@@ -3,11 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SaboresService } from '../../core/services/sabores.service';
 import { InventarioService } from '../../core/services/inventario.service';
-import {
-  Sabor,
-  Inventario,
-  LoteProduccion,
-} from '../../core/models/interfaces';
+import { Sabor, LoteProduccion } from '../../core/models/interfaces';
 import {
   formatearMoneda,
   calcularCostoUnitarioLote,
@@ -15,8 +11,6 @@ import {
 } from '../../core/utils/calculos.utils';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Observable, combineLatest, map } from 'rxjs';
-import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component'; // <--- Importar
-import { skeletonClasses } from '@mui/material';
 
 interface SaborConInventario extends Sabor {
   cantidad: number;
@@ -26,7 +20,7 @@ interface SaborConInventario extends Sabor {
 @Component({
   selector: 'app-produccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, SkeletonComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './produccion.component.html',
   styleUrl: './produccion.component.scss',
 })
@@ -58,11 +52,13 @@ export class ProduccionComponent implements OnInit {
   // Estado
   guardando = false;
   mensaje = '';
+  mensajeError = false;
 
   ngOnInit() {
     this.sabores$ = this.saboresService.getSabores$();
     this.lotes$ = this.inventarioService.getLotes$();
 
+    // Combinamos sabores con su inventario correspondiente para la vista
     this.saboresConInventario$ = combineLatest([
       this.saboresService.getSabores$(),
       this.inventarioService.getInventario$(),
@@ -97,9 +93,7 @@ export class ProduccionComponent implements OnInit {
       bolsasResultantes: null,
       notas: '',
     };
-    this.costoUnitarioCalculado = 0;
-    this.utilidadPorBolsa = 0;
-    this.margenPorcentaje = 0;
+    this.resetCalculos();
     this.modalVisible = true;
   }
 
@@ -107,6 +101,15 @@ export class ProduccionComponent implements OnInit {
     this.modalVisible = false;
   }
 
+  resetCalculos() {
+    this.costoUnitarioCalculado = 0;
+    this.utilidadPorBolsa = 0;
+    this.margenPorcentaje = 0;
+  }
+
+  /**
+   * Calcula métricas en vivo mientras el usuario escribe
+   */
   calcularCostos() {
     if (
       this.nuevoLote.costoKilo &&
@@ -123,9 +126,7 @@ export class ProduccionComponent implements OnInit {
         this.precioVenta
       );
     } else {
-      this.costoUnitarioCalculado = 0;
-      this.utilidadPorBolsa = 0;
-      this.margenPorcentaje = 0;
+      this.resetCalculos();
     }
   }
 
@@ -135,7 +136,7 @@ export class ProduccionComponent implements OnInit {
       !this.nuevoLote.costoKilo ||
       !this.nuevoLote.bolsasResultantes
     ) {
-      this.mostrarMensaje('Completa todos los campos', true);
+      this.mostrarMensaje('Completa todos los campos obligatorios', true);
       return;
     }
 
@@ -155,16 +156,18 @@ export class ProduccionComponent implements OnInit {
       });
 
       this.mostrarMensaje(
-        `¡Lote registrado! +${this.nuevoLote.bolsasResultantes} bolsas`
+        `✅ Lote registrado: +${this.nuevoLote.bolsasResultantes} bolsas`
       );
       this.cerrarModal();
     } catch (error) {
-      this.mostrarMensaje('Error al guardar', true);
+      console.error(error);
+      this.mostrarMensaje('Error al guardar el lote', true);
     }
 
     this.guardando = false;
   }
 
+  // Helpers para la vista
   getSaborNombre(saborId: string, sabores: Sabor[]): string {
     return sabores.find((s) => s.id === saborId)?.nombre || 'Desconocido';
   }
@@ -179,6 +182,10 @@ export class ProduccionComponent implements OnInit {
 
   private mostrarMensaje(texto: string, esError = false) {
     this.mensaje = texto;
-    setTimeout(() => (this.mensaje = ''), 3000);
+    this.mensajeError = esError;
+    setTimeout(() => {
+      this.mensaje = '';
+      this.mensajeError = false;
+    }, 3000);
   }
 }
