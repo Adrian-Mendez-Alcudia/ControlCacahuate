@@ -6,18 +6,15 @@ import { InventarioService } from '../../core/services/inventario.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { Sabor, Inventario, Cliente } from '../../core/models/interfaces';
+import { CarritoService } from '../../core/services/carrito.service';
+import { Sabor, Cliente } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
-import { Observable, combineLatest, map } from 'rxjs';
+import { Observable, combineLatest, map, tap } from 'rxjs';
 
+// Interfaz local para la vista
 interface SaborConInventario extends Sabor {
   cantidad: number;
   costoPromedio: number;
-}
-
-interface ItemCarrito {
-  sabor: SaborConInventario;
-  cantidad: number;
 }
 
 @Component({
@@ -33,29 +30,31 @@ export class PosComponent implements OnInit {
   private ventasService = inject(VentasService);
   private clientesService = inject(ClientesService);
   private configuracionService = inject(ConfiguracionService);
+  public carritoService = inject(CarritoService);
 
+  // Observables para la vista
   saboresConInventario$!: Observable<SaborConInventario[]>;
   clientes$!: Observable<Cliente[]>;
+
+  // Variables locales para lógica síncrona
+  saboresList: SaborConInventario[] = [];
 
   precioVenta = 10;
   efectivoHoy = 0;
   fiadoHoy = 0;
 
-  // Carrito de compras
-  carrito: ItemCarrito[] = [];
+  // Modales
   modalCobroVisible = false;
-
-  // Modal nuevo cliente
   modalNuevoCliente = false;
   nuevoClienteAlias = '';
 
-  // Estado de carga
+  // Estado
   procesando = false;
   mensaje = '';
   mensajeError = false;
 
   ngOnInit() {
-    // Combinar sabores con inventario
+    // 1. Combinamos datos y guardamos una copia local en 'saboresList'
     this.saboresConInventario$ = combineLatest([
       this.saboresService.getSabores$(),
       this.inventarioService.getInventario$(),
@@ -69,19 +68,21 @@ export class PosComponent implements OnInit {
             costoPromedio: inv?.costoPromedioPonderado || 0,
           };
         });
+      }),
+      tap((sabores) => {
+        // Guardamos la lista actualizada para usarla en agregarAlCarrito
+        this.saboresList = sabores;
       })
     );
 
     this.clientes$ = this.clientesService.getClientes$();
 
-    // Cargar configuración
     this.configuracionService.config$.subscribe((config) => {
       if (config) {
         this.precioVenta = config.precioVentaDefault;
       }
     });
 
-    // Cargar caja del día
     this.ventasService.getCajaDia$().subscribe((caja) => {
       if (caja) {
         this.efectivoHoy = caja.efectivoVentas + caja.efectivoAbonos;
@@ -94,71 +95,46 @@ export class PosComponent implements OnInit {
     return formatearMoneda(valor);
   }
 
-  // ========== LÓGICA DEL CARRITO ==========
+  // ========== ACCIONES DEL CARRITO ==========
 
-  agregarAlCarrito(sabor: SaborConInventario) {
-    const index = this.carrito.findIndex((i) => i.sabor.id === sabor.id);
-    const cantidadActual = index !== -1 ? this.carrito[index].cantidad : 0;
+  // CORRECCIÓN: Ahora aceptamos cualquier objeto que tenga un ID (Sabor o SaborConInventario)
+  agregarAlCarrito(saborPartial: { id: string }) {
+    // Buscamos el sabor completo con sus datos de inventario actuales
+    const saborCompleto = this.saboresList.find(
+      (s) => s.id === saborPartial.id
+    );
 
-    if (cantidadActual >= sabor.cantidad) {
+    if (!saborCompleto) {
+      this.mostrarMensaje('Error al localizar el producto', true);
+      return;
+    }
+
+    const cantidadEnCarrito = this.carritoService.obtenerCantidad(
+      saborCompleto.id
+    );
+
+    // Validamos contra el stock real
+    if (cantidadEnCarrito >= saborCompleto.cantidad) {
       this.mostrarMensaje('No hay suficiente stock', true);
       return;
     }
 
-    if (index !== -1) {
-      // Actualizamos creando un nuevo objeto para asegurar detección de cambios
-      const item = { ...this.carrito[index] };
-      item.cantidad++;
-      const nuevoCarrito = [...this.carrito];
-      nuevoCarrito[index] = item;
-      this.carrito = nuevoCarrito;
-    } else {
-      // Agregamos al array creando una nueva referencia
-      this.carrito = [...this.carrito, { sabor, cantidad: 1 }];
-    }
-  }
-
-  restarDelCarrito(sabor: SaborConInventario) {
-    const index = this.carrito.findIndex((i) => i.sabor.id === sabor.id);
-    if (index !== -1) {
-      const item = { ...this.carrito[index] };
-      item.cantidad--;
-
-      const nuevoCarrito = [...this.carrito];
-      if (item.cantidad <= 0) {
-        nuevoCarrito.splice(index, 1);
-      } else {
-        nuevoCarrito[index] = item;
-      }
-      this.carrito = nuevoCarrito;
-    }
-  }
-
-  getCantidadEnCarrito(saborId: string): number {
-    const item = this.carrito.find((i) => i.sabor.id === saborId);
-    return item ? item.cantidad : 0;
-  }
-
-  get totalCarrito(): number {
-    return this.carrito.reduce(
-      (total, item) => total + item.cantidad * this.precioVenta,
-      0
+    // Pasamos el sabor completo al servicio
+    this.carritoService.agregarItem(
+      saborCompleto,
+      this.precioVenta,
+      saborCompleto.cantidad
     );
   }
 
-  get cantidadTotalItems(): number {
-    return this.carrito.reduce((total, item) => total + item.cantidad, 0);
-  }
-
-  limpiarCarrito() {
-    this.carrito = [];
-    this.cerrarModal();
+  restarDelCarrito(sabor: { id: string }) {
+    this.carritoService.restarItem(sabor.id);
   }
 
   // ========== MODALES ==========
 
   abrirModalCobrar() {
-    if (this.carrito.length === 0) {
+    if (this.carritoService.cantidadItems() === 0) {
       this.mostrarMensaje('El carrito está vacío', true);
       return;
     }
@@ -184,32 +160,27 @@ export class PosComponent implements OnInit {
     tipoPago: 'efectivo' | 'fiado',
     clienteId?: string
   ) {
-    if (this.procesando || this.carrito.length === 0) return;
+    const items = this.carritoService.carrito();
+    if (this.procesando || items.length === 0) return;
 
     this.procesando = true;
     let errores = 0;
     let exitos = 0;
 
     try {
-      // Iteramos sobre cada item del carrito
-      for (const item of this.carrito) {
-        // Como el servicio procesa de 1 en 1, hacemos un bucle por la cantidad
+      for (const item of items) {
         for (let i = 0; i < item.cantidad; i++) {
           const resultado = await this.ventasService.procesarVenta({
             saborId: item.sabor.id,
             tipoPago: tipoPago,
             clienteId: clienteId,
-            precioVenta: this.precioVenta,
+            precioVenta: item.precioVenta,
           });
 
           if (resultado.success) {
             exitos++;
           } else {
             errores++;
-            console.error(
-              `Error vendiendo ${item.sabor.nombre}:`,
-              resultado.error
-            );
           }
         }
       }
@@ -220,13 +191,15 @@ export class PosComponent implements OnInit {
             ? '¡Todo fiado correctamente!'
             : '¡Venta registrada!'
         );
-        this.limpiarCarrito();
+        this.carritoService.limpiarCarrito();
+        this.cerrarModal();
       } else {
         this.mostrarMensaje(
           `Se vendieron ${exitos}, pero hubo ${errores} errores.`,
           true
         );
-        if (exitos > 0) this.limpiarCarrito();
+        if (exitos > 0) this.carritoService.limpiarCarrito();
+        this.cerrarModal();
       }
     } catch (error) {
       console.error('Error procesando carrito:', error);
@@ -260,7 +233,6 @@ export class PosComponent implements OnInit {
 
       this.procesando = false;
       this.cerrarModalNuevoCliente();
-
       await this.venderFiado(nuevoCliente);
     } catch (error) {
       console.error('Error:', error);

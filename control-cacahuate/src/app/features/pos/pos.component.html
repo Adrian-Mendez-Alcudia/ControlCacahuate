@@ -20,7 +20,6 @@
       <p class="hint">Ve a <strong>Config</strong> para agregar tus sabores</p>
     </div>
     } @else { @for (sabor of sabores; track sabor.id) {
-    <!-- Cambiamos button por div para poder anidar el botón de restar -->
     <div
       class="sabor-btn"
       [class.sin-stock]="sabor.cantidad <= 0"
@@ -29,11 +28,13 @@
       role="button"
       tabindex="0"
     >
-      <!-- Badge de cantidad en carrito -->
-      @if (getCantidadEnCarrito(sabor.id) > 0) {
-      <span class="badge-cantidad">{{ getCantidadEnCarrito(sabor.id) }}</span>
+      <!-- Badge de cantidad en carrito (Usando el servicio) -->
+      @if (carritoService.obtenerCantidad(sabor.id) > 0) {
+      <span class="badge-cantidad">{{
+        carritoService.obtenerCantidad(sabor.id)
+      }}</span>
 
-      <!-- NUEVO: Botón para restar directo en la tarjeta -->
+      <!-- Botón para restar directo en la tarjeta -->
       <button
         class="btn-menos-card"
         (click)="$event.stopPropagation(); restarDelCarrito(sabor)"
@@ -55,8 +56,8 @@
     }
   </div>
 
-  <!-- Resumen del día (Visible solo si no hay carrito activo) -->
-  @if (carrito.length === 0) {
+  <!-- Resumen del día (Solo si carrito vacío) -->
+  @if (carritoService.cantidadItems() === 0) {
   <div class="resumen-dia">
     <h3>Resumen del día</h3>
     <div class="resumen-row">
@@ -72,14 +73,17 @@
 </div>
 
 <!-- Barra de Cobro Flotante -->
-@if (carrito.length > 0) {
+@if (carritoService.cantidadItems() > 0) {
 <div class="barra-cobro">
-  <!-- NUEVO: Botón para cancelar/vaciar orden -->
-  <button class="btn-vaciar-rapido" (click)="limpiarCarrito()">🗑️</button>
+  <button class="btn-vaciar-rapido" (click)="carritoService.limpiarCarrito()">
+    🗑️
+  </button>
 
   <div class="info-cobro">
-    <span class="items-count">{{ cantidadTotalItems }} artículos</span>
-    <span class="total">{{ formatearMoneda(totalCarrito) }}</span>
+    <span class="items-count"
+      >{{ carritoService.cantidadItems() }} artículos</span
+    >
+    <span class="total">{{ formatearMoneda(carritoService.total()) }}</span>
   </div>
 
   <button class="btn-ver-cobrar" (click)="abrirModalCobrar()">Cobrar</button>
@@ -94,23 +98,31 @@
 
     <!-- Lista de items en carrito -->
     <div class="carrito-lista">
-      @for (item of carrito; track item.sabor.id) {
+      @for (item of carritoService.carrito(); track item.sabor.id) {
       <div class="carrito-item">
         <div class="info-item">
           <span class="emoji">{{ item.sabor.emoji }}</span>
           <span class="nombre">{{ item.sabor.nombre }}</span>
         </div>
         <div class="controles-cantidad">
-          <button class="btn-qty" (click)="restarDelCarrito(item.sabor)">
+          <!-- OJO: Aquí llamamos a los métodos del TS que a su vez llaman al servicio -->
+          <button
+            class="btn-qty"
+            (click)="carritoService.restarItem(item.sabor.id)"
+          >
             -
           </button>
           <span class="qty">{{ item.cantidad }}</span>
+          <!-- Nota: Para agregar desde aquí necesitamos el objeto sabor completo, que ya viene en 'item.sabor' -->
+          <!-- Pero necesitamos el stock disponible real para validar. -->
+          <!-- Por simplicidad en esta vista, asumimos que puede sumar, o idealmente deberíamos pasar el stock -->
+          <!-- Una mejora rápida es deshabilitar si llega al tope, pero por ahora lo dejamos simple -->
           <button class="btn-qty" (click)="agregarAlCarrito(item.sabor)">
             +
           </button>
         </div>
         <div class="subtotal">
-          {{ formatearMoneda(item.cantidad * precioVenta) }}
+          {{ formatearMoneda(item.cantidad * item.precioVenta) }}
         </div>
       </div>
       }
@@ -118,7 +130,7 @@
 
     <div class="total-final">
       <span>Total a Pagar:</span>
-      <span class="monto">{{ formatearMoneda(totalCarrito) }}</span>
+      <span class="monto">{{ formatearMoneda(carritoService.total()) }}</span>
     </div>
 
     <h3 class="metodo-pago-titulo">Selecciona método de pago:</h3>
@@ -158,7 +170,10 @@
       </button>
     </div>
 
-    <button class="btn-cancelar" (click)="limpiarCarrito()">
+    <button
+      class="btn-cancelar"
+      (click)="carritoService.limpiarCarrito(); cerrarModal()"
+    >
       🗑️ Vaciar Carrito y Cancelar
     </button>
     <button class="btn-cancelar-simple" (click)="cerrarModal()">
