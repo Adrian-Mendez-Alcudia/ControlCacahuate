@@ -1,16 +1,32 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>ControlCacahuate</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1976d2">
-</head>
-<body>
-  <app-root></app-root>
-  <noscript>Please enable JavaScript to continue using this application.</noscript>
-</body>
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>ControlCacahuate</title>
+    <base href="/" />
+
+    <!-- CORRECCIÓN AQUÍ: user-scalable=no evita el zoom -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#1976d2" />
+
+    <!-- Evitar el "tap highlight" gris en móviles -->
+    <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation; /* Mejora la respuesta táctil */
+      }
+    </style>
+  </head>
+  <body>
+    <app-root></app-root>
+    <noscript
+      >Please enable JavaScript to continue using this application.</noscript
+    >
+  </body>
 </html>
