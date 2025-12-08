@@ -60,13 +60,7 @@ export class ClientesService {
             estaVencido: estaFechaVencida(c.fechaPromesaPago?.toDate()),
             diasVencido: calcularDiasVencimiento(c.fechaPromesaPago?.toDate()),
           }))
-          .sort((a, b) => {
-            // Primero los vencidos
-            if (a.estaVencido && !b.estaVencido) return -1;
-            if (!a.estaVencido && b.estaVencido) return 1;
-            // Luego por monto de deuda
-            return b.saldoPendiente - a.saldoPendiente;
-          })
+          .sort((a, b) => b.saldoPendiente - a.saldoPendiente)
       )
     );
   }
@@ -166,14 +160,18 @@ export class ClientesService {
    * varios productos al mismo tiempo.
    */
   async agregarDeuda(clienteId: string, monto: number): Promise<void> {
-    // Ya no necesitamos leer el cliente primero para calcular,
-    // Firestore lo hará atómicamente. Ahorramos lecturas y evitamos bugs.
-
-    await updateDoc(doc(this.clientesCollection, clienteId), {
-      saldoPendiente: increment(monto), // <--- La magia está aquí
+    const clienteRef = doc(this.clientesCollection, clienteId);
+    // Usamos increment para evitar condiciones de carrera
+    await updateDoc(clienteRef, {
+      saldoPendiente: increment(monto),
     });
-
-    console.log(`💸 Deuda agregada al sistema: +$${monto}`);
+  }
+  async reducirDeuda(clienteId: string, monto: number): Promise<void> {
+    const clienteRef = doc(this.clientesCollection, clienteId);
+    // Restamos el monto (incrementar negativo)
+    await updateDoc(clienteRef, {
+      saldoPendiente: increment(-monto),
+    });
   }
 
   /**

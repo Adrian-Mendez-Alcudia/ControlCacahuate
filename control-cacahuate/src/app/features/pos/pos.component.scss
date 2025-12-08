@@ -1,4 +1,3 @@
-// ... (MANTÉN TODO LO ANTERIOR HASTA HISTORY LIST) ...
 // Variables
 $bg-dark: #0f0f1a;
 $card-bg: #1e1e32;
@@ -13,9 +12,6 @@ $danger-color: #ef4444;
   max-width: 600px;
   margin: 0 auto;
 }
-
-// ... (Pega aquí el resto de estilos que te di antes hasta llegar a .history-list) ...
-// Por brevedad, solo pongo los nuevos estilos del historial agrupado que reemplazan a los anteriores
 
 .header {
   display: flex;
@@ -42,31 +38,30 @@ $danger-color: #ef4444;
     }
   }
 
+  // Nuevo botón historial
   .btn-history {
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: none;
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
     transition: background 0.2s;
 
-    &:hover {
+    span {
+      font-size: 20px;
+    }
+
+    &:active {
       background: rgba(255, 255, 255, 0.2);
     }
   }
-
-  .subtitle {
-    font-size: 12px;
-    color: #666;
-    margin: 0;
-  }
 }
 
+// Grid de Productos
 .grid-productos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -128,6 +123,7 @@ $danger-color: #ef4444;
     }
   }
 
+  // Badge Cantidad
   .badge-cantidad {
     position: absolute;
     top: -6px;
@@ -176,6 +172,7 @@ $danger-color: #ef4444;
   animation: pulse 1.5s infinite;
 }
 
+// Resumen Footer (cuando no hay carrito)
 .resumen-footer {
   margin-top: 30px;
   background: $card-bg;
@@ -211,6 +208,7 @@ $danger-color: #ef4444;
   }
 }
 
+// Barra Flotante
 .floating-action-bar {
   position: fixed;
   bottom: 80px;
@@ -269,6 +267,7 @@ $danger-color: #ef4444;
   }
 }
 
+// Bottom Sheet Modal
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -298,8 +297,9 @@ $danger-color: #ef4444;
   animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 
-  &.h-tall {
-    height: 80vh;
+  // Estilo específico para historial
+  &.history-sheet {
+    height: 70vh; // Altura fija cómoda
   }
 
   .sheet-handle {
@@ -325,13 +325,6 @@ $danger-color: #ef4444;
       border: none;
       color: $danger-color;
       font-size: 14px;
-      cursor: pointer;
-    }
-    .btn-close {
-      background: transparent;
-      border: none;
-      color: #888;
-      font-size: 20px;
       cursor: pointer;
     }
   }
@@ -419,26 +412,36 @@ $danger-color: #ef4444;
     flex-direction: column;
     gap: 16px;
 
+    // Buscador
+    .search-box {
+      input {
+        width: 100%;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid #444;
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+
+        &:focus {
+          outline: none;
+          border-color: $accent-color;
+        }
+      }
+    }
+
     .btn-pay {
       width: 100%;
       padding: 16px;
-      border-radius: 16px;
+      border-radius: 12px;
       border: none;
       font-weight: 700;
       font-size: 16px;
       cursor: pointer;
-      transition: transform 0.1s;
-
-      &:active {
-        transform: scale(0.98);
-      }
-
-      .btn-content {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-      }
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
 
       &.cash {
         background: linear-gradient(
@@ -447,266 +450,122 @@ $danger-color: #ef4444;
           darken($success-color, 10%)
         );
         color: #000;
-        box-shadow: 0 4px 15px rgba($success-color, 0.3);
       }
     }
 
-    .credit-section-improved {
+    .credit-section {
       background: rgba(0, 0, 0, 0.2);
-      padding: 16px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px;
+      border-radius: 12px;
 
-      .credit-header {
-        margin-bottom: 12px;
-        .title {
-          font-size: 14px;
-          color: #888;
-          font-weight: 600;
-        }
+      p {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #888;
       }
 
-      .search-box {
-        position: relative;
-        margin-bottom: 12px;
-
-        .search-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #666;
-        }
-
-        input {
-          width: 100%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 10px 36px;
-          color: white;
-          font-size: 14px;
-
-          &:focus {
-            outline: none;
-            border-color: $accent-color;
-            background: rgba(0, 0, 0, 0.3);
-          }
-        }
-
-        .clear-search {
-          position: absolute;
-          right: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #666;
-          cursor: pointer;
-          font-size: 16px;
-          padding: 4px;
-        }
-      }
-
-      .clients-list-vertical {
+      .clients-scroll {
         display: flex;
-        flex-direction: column;
         gap: 8px;
-        max-height: 220px;
-        overflow-y: auto;
-        padding-right: 4px;
+        overflow-x: auto;
+        padding-bottom: 4px;
 
-        &::-webkit-scrollbar {
-          width: 4px;
-        }
-        &::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-        }
-        &::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
-        }
-
-        .client-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          padding: 10px;
-          border-radius: 12px;
+        .btn-chip {
+          background: #3d3d5c;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          white-space: nowrap;
           cursor: pointer;
-          transition: background 0.2s;
-          text-align: left;
-
-          &:hover {
-            background: rgba(255, 255, 255, 0.08);
-          }
-
-          &:active {
-            background: rgba($accent-color, 0.1);
-            border-color: rgba($accent-color, 0.3);
-          }
-
-          .avatar-circle {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: #3d3d5c;
-            color: #ddd;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 13px;
-            flex-shrink: 0;
-
-            &.add {
-              background: transparent;
-              border: 1px dashed #666;
-              color: $accent-color;
-              font-size: 20px;
-            }
-          }
-
-          .client-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-
-            .name {
-              font-weight: 500;
-              color: #eee;
-              font-size: 14px;
-            }
-
-            .details {
-              font-size: 11px;
-              color: #888;
-            }
-          }
-
-          .arrow-icon {
-            color: #444;
-            font-size: 12px;
-          }
-
-          &.new-client {
-            background: rgba($accent-color, 0.05);
-            border: 1px dashed rgba($accent-color, 0.2);
-
-            .name {
-              color: $accent-color;
-            }
-          }
-        }
-
-        .no-results {
-          text-align: center;
-          padding: 20px;
-          color: #666;
           font-size: 13px;
-          font-style: italic;
+
+          &.add {
+            background: transparent;
+            border: 1px dashed #666;
+            color: #888;
+          }
         }
       }
     }
   }
 }
 
-// NUEVOS ESTILOS PARA HISTORIAL AGRUPADO (TICKET)
+// Estilos para la lista de historial
 .history-list {
   flex: 1;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-bottom: 20px;
+  padding-right: 4px;
 
-  .history-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 16px; // Más padding porque ahora es un ticket
-    border-radius: 16px;
+  .history-item {
+    background: #252540;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
     display: flex;
-    flex-direction: column; // Columna para poner la lista abajo
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    transition: background 0.2s;
+    border: 1px solid transparent;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      border-color: $text-light;
     }
 
-    .card-header-ticket {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
+    .h-info {
+      flex: 1;
 
-      .meta {
+      .h-top {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
+        gap: 8px;
+        margin-bottom: 4px;
 
-        .time {
-          font-size: 12px;
+        .h-time {
           color: #888;
-          font-weight: 600;
-        }
-        .type {
           font-size: 11px;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 2px 8px;
-          border-radius: 10px;
-          color: #aaa;
-          width: fit-content;
+        }
+        .h-badge {
+          font-size: 10px;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: rgba($accent-color, 0.2);
+          color: $accent-color;
 
-          &.fiado {
-            background: rgba($accent-color, 0.1);
-            color: $accent-color;
+          &.efectivo {
+            background: rgba($success-color, 0.2);
+            color: $success-color;
           }
         }
       }
 
-      .total-ticket {
-        font-size: 20px;
-        font-weight: 700;
-        color: $success-color;
+      .h-client {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .h-note {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 4px;
+        font-style: italic;
       }
     }
 
-    .items-list-mini {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 8px;
-      border-top: 1px dashed rgba(255, 255, 255, 0.1);
-
-      .item-mini {
-        font-size: 13px;
-        color: #ddd;
-        display: flex;
-        align-items: center;
-
-        &::before {
-          content: "•";
-          color: #666;
-          margin-right: 6px;
-        }
-      }
+    .h-total {
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
     }
+  }
 
-    .note-badge {
-      margin-top: 10px;
-      font-size: 12px;
-      background: rgba($accent-color, 0.15);
-      color: $accent-color;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-style: italic;
-    }
+  .empty-msg {
+    text-align: center;
+    color: #666;
+    margin-top: 40px;
   }
 }
 
+// Dialog Box (Nuevo Cliente & Edit Note)
 .dialog-box {
   background: $card-bg;
   padding: 24px;
@@ -721,34 +580,27 @@ $danger-color: #ef4444;
     text-align: center;
   }
 
-  .dialog-subtitle {
-    color: $success-color;
-    text-align: center;
-    margin-top: -10px;
-    margin-bottom: 20px;
-    font-weight: 700;
-    font-size: 24px;
-  }
-
+  // Estilo específico para input wrapper con label
   .input-wrapper {
     margin-bottom: 20px;
 
     label {
       display: block;
-      color: #888;
-      font-size: 12px;
       margin-bottom: 8px;
+      color: #ccc;
+      font-size: 13px;
     }
 
-    textarea {
+    textarea,
+    input {
       width: 100%;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
       padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid #444;
+      border-radius: 8px;
       color: white;
+      font-size: 16px;
       font-family: inherit;
-      resize: none;
 
       &:focus {
         outline: none;
@@ -757,7 +609,8 @@ $danger-color: #ef4444;
     }
   }
 
-  input {
+  // Input simple (viejo estilo mantenido para compatibilidad si se usa solo)
+  input:not(.input-wrapper input) {
     width: 100%;
     padding: 12px;
     background: rgba(0, 0, 0, 0.2);

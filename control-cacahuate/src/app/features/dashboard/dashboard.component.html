@@ -12,10 +12,10 @@
 
   @if (resumen$ | async; as resumen) {
 
-  <!-- SECCIÓN 1: SALUD FINANCIERA DEL DÍA -->
+  <!-- SECCIÓN 1: SALUD FINANCIERA -->
   <section class="overview-section">
     <div class="main-stats-grid">
-      <!-- Tarjeta Principal: Utilidad Real -->
+      <!-- Tarjeta 1: Utilidad Real -->
       <div class="stat-card featured utilidad">
         <div class="icon-bg">📈</div>
         <div class="stat-content">
@@ -31,13 +31,44 @@
         </div>
       </div>
 
-      <!-- Tarjeta Secundaria: Caja (Liquidez) -->
+      <!-- Tarjeta 2: Dinero en Caja -->
       <div class="stat-card efectivo">
         <div class="stat-content">
           <span class="label">Dinero en Caja</span>
           <span class="valor">{{ formatearMoneda(resumen.efectivoHoy) }}</span>
-          <span class="detalle">Ventas + Abonos</span>
+          <span class="detalle">Ventas Efectivo + Abonos</span>
         </div>
+      </div>
+
+      <!-- Tarjeta 3: DEUDA TOTAL (Agregada para visibilidad) -->
+      <div
+        class="stat-card deuda-total"
+        style="
+          background: #2d2d44;
+          border-left: 4px solid #ef4444;
+          padding: 12px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        "
+      >
+        <div class="stat-content">
+          <span
+            class="label"
+            style="color: #aaa; font-size: 11px; text-transform: uppercase"
+            >Dinero en la Calle</span
+          >
+          <span
+            class="valor"
+            style="color: #ef4444; font-size: 20px; font-weight: 700"
+            >{{ formatearMoneda(resumen.dineroEnCalle) }}</span
+          >
+          <span class="detalle" style="color: #888; font-size: 10px"
+            >{{ resumen.clientesConDeuda }} deudores</span
+          >
+        </div>
+        <div class="icon" style="font-size: 24px">🏃</div>
       </div>
     </div>
   </section>
@@ -86,7 +117,7 @@
           >
         </div>
         <div class="row">
-          <span>Ventas Fiado</span>
+          <span>Ventas Fiado (Hoy)</span>
           <span class="num text-warning"
             >+{{ formatearMoneda(resumen.ventasFiadoHoy) }}</span
           >

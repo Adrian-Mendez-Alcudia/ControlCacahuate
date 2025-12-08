@@ -1,5 +1,5 @@
 <div class="pos-container">
-  <!-- Header Minimalista -->
+  <!-- Header -->
   <header class="header">
     <div class="brand">
       <span class="logo">🥜</span>
@@ -12,14 +12,12 @@
     </button>
   </header>
 
-  <!-- Notificaciones Flotantes -->
   @if (mensaje) {
   <div class="toast-notification" [class.error]="mensajeError">
     {{ mensaje }}
   </div>
   }
 
-  <!-- Grid de Productos -->
   <div class="grid-productos">
     @if (saboresConInventario$ | async; as sabores) { @if (sabores.length === 0)
     {
@@ -29,19 +27,16 @@
       <p>Agrega sabores en configuración</p>
     </div>
     } @else { @for (sabor of sabores; track sabor.id) {
-    <!-- Tarjeta de Producto -->
     <div
       class="producto-card"
       [class.sin-stock]="sabor.cantidad <= 0"
       [style.--card-color]="sabor.color"
       (click)="agregarAlCarrito(sabor)"
     >
-      <!-- Badge Cantidad (si hay en carrito) -->
       @if (getCantidadEnCarrito(sabor.id) > 0) {
       <div class="badge-cantidad">
         {{ getCantidadEnCarrito(sabor.id) }}
       </div>
-      <!-- Botón Restar Rápido -->
       <button
         class="btn-restar-rapido"
         (click)="$event.stopPropagation(); restarDelCarrito(sabor)"
@@ -59,30 +54,44 @@
         </div>
       </div>
     </div>
-    } } } @else {
-    <!-- Skeletons de carga -->
-    @for (i of [1,2,3,4,5,6]; track i) {
+    } } } @else { @for (i of [1,2,3,4,5,6]; track i) {
     <div class="skeleton-card"></div>
     } }
   </div>
 
-  <!-- Resumen Footer (solo si no hay carrito activo) -->
+  <!-- FOOTER RESUMEN -->
   @if (carritoService.cantidadItems() === 0) {
-  <div class="resumen-footer">
+  <div class="resumen-footer three-cols">
+    <!-- Columna 1: Efectivo Hoy -->
     <div class="stat">
       <span class="label">Ventas Hoy</span>
       <span class="valor cash">{{ formatearMoneda(efectivoHoy) }}</span>
     </div>
+
     <div class="divider"></div>
+
+    <!-- Columna 2: Fiado Hoy (Lo que se fió hoy) -->
     <div class="stat">
       <span class="label">Fiado Hoy</span>
       <span class="valor credit">{{ formatearMoneda(fiadoHoy) }}</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Columna 3: TOTAL DEUDA (Lo que te deben todos históricamente) -->
+    <!-- Este es el dato que te faltaba -->
+    <div class="stat">
+      <span class="label">Total Deuda</span>
+      <span class="valor debt">
+        @if (dineroEnCalle$ | async; as totalDeuda) {
+        {{ formatearMoneda(totalDeuda) }}
+        } @else { $0.00 }
+      </span>
     </div>
   </div>
   }
 </div>
 
-<!-- Barra de Acción Flotante (Carrito Activo) -->
 @if (carritoService.cantidadItems() > 0) {
 <div class="floating-action-bar">
   <div class="cart-info" (click)="abrirModalCobrar()">
@@ -96,7 +105,7 @@
 </div>
 }
 
-<!-- Modal de Cobro (Bottom Sheet) -->
+<!-- MODAL COBRO -->
 @if (modalCobroVisible) {
 <div class="modal-backdrop" (click)="cerrarModal()">
   <div class="bottom-sheet" (click)="$event.stopPropagation()">
@@ -112,7 +121,6 @@
       </button>
     </div>
 
-    <!-- Lista de Items en Carrito -->
     <div class="cart-items-scroll">
       @for (item of carritoService.carrito(); track item.sabor.id) {
       <div class="cart-row">
@@ -128,7 +136,7 @@
         </div>
 
         <div class="row-price">
-          {{ formatearMoneda(item.subtotal) }}
+          {{ formatearMoneda(item.cantidad * item.precioVenta) }}
         </div>
       </div>
       }
@@ -139,76 +147,38 @@
       <span class="amount">{{ formatearMoneda(carritoService.total()) }}</span>
     </div>
 
-    <!-- Acciones de Pago -->
     <div class="payment-actions">
-      <!-- Botón Gigante de Efectivo -->
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Buscar cliente..."
+          [(ngModel)]="terminoBusqueda"
+          (input)="filtrarClientes()"
+        />
+      </div>
+
       <button
         class="btn-pay cash"
         (click)="venderEfectivo()"
         [disabled]="procesando"
       >
-        <div class="btn-content">
-          <span class="icon">💵</span>
-          <span class="text">Cobrar Efectivo</span>
-        </div>
+        <span class="icon">💵</span> Cobrar Efectivo
       </button>
 
-      <!-- Sección de Fiado Mejorada -->
-      <div class="credit-section-improved">
-        <div class="credit-header">
-          <span class="title">📝 Fiar a cliente</span>
-        </div>
-
-        <!-- Buscador -->
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Buscar cliente..."
-            [(ngModel)]="terminoBusqueda"
-            (input)="filtrarClientes()"
-          />
-          @if (terminoBusqueda) {
-          <button
-            class="clear-search"
-            (click)="terminoBusqueda = ''; filtrarClientes()"
-          >
-            ✕
+      <div class="credit-section">
+        <p>O fiar a:</p>
+        <div class="clients-scroll">
+          <button class="btn-chip add" (click)="abrirModalNuevoCliente()">
+            + Nuevo
           </button>
-          }
-        </div>
-
-        <!-- Lista Vertical de Clientes -->
-        <div class="clients-list-vertical">
-          <button
-            class="client-row new-client"
-            (click)="abrirModalNuevoCliente()"
-          >
-            <div class="avatar-circle add">+</div>
-            <div class="client-info">
-              <span class="name">Nuevo Cliente</span>
-              <span class="details">Crear y fiar</span>
-            </div>
-          </button>
-
           @for (cliente of clientesFiltrados; track cliente.id) {
           <button
-            class="client-row"
+            class="btn-chip"
             (click)="venderFiado(cliente)"
             [disabled]="procesando"
           >
-            <div class="avatar-circle">
-              {{ getIniciales(cliente.alias) }}
-            </div>
-            <div class="client-info">
-              <span class="name">{{ cliente.alias }}</span>
-            </div>
-            <div class="arrow-icon">➔</div>
+            {{ cliente.alias }}
           </button>
-          } @empty {
-          <div class="no-results">
-            No se encontraron clientes con ese nombre
-          </div>
           }
         </div>
       </div>
@@ -217,76 +187,65 @@
 </div>
 }
 
-<!-- Modal Historial Agrupado (TICKETS) -->
+<!-- MODAL HISTORIAL -->
 @if (modalHistorialVisible) {
 <div class="modal-backdrop" (click)="cerrarHistorial()">
-  <div class="bottom-sheet h-tall" (click)="$event.stopPropagation()">
+  <div class="bottom-sheet history-sheet" (click)="$event.stopPropagation()">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <h2>📜 Tickets de Hoy</h2>
-      <button class="btn-close" (click)="cerrarHistorial()">✕</button>
+      <h2>📜 Últimas Ventas</h2>
+      <button class="btn-clear" (click)="cerrarHistorial()">Cerrar</button>
     </div>
 
     <div class="history-list">
-      @if (ticketsHoy$ | async; as tickets) { @if (tickets.length === 0) {
-      <div class="empty-state">
-        <p>Aún no hay ventas hoy</p>
-      </div>
-      } @else { @for (ticket of tickets; track ticket.transactionId) {
-      <!-- Tarjeta de Ticket Agrupada -->
-      <div class="history-card" (click)="abrirEditarTicket(ticket)">
-        <div class="card-header-ticket">
-          <div class="meta">
-            <span class="time">{{
+      @if (ticketsHistorial.length === 0) {
+      <p class="empty-msg">No hay ventas recientes</p>
+      } @for (ticket of ticketsHistorial; track ticket.idPrincipal) {
+      <div class="history-item" (click)="abrirEditarNota(ticket)">
+        <div class="h-info">
+          <div class="h-top">
+            <span class="h-time">{{
               ticket.fecha.toDate() | date : "HH:mm"
             }}</span>
-            <span class="type" [class.fiado]="ticket.tipoPago === 'fiado'">
-              {{
-                ticket.tipoPago === "fiado"
-                  ? "Fiado: " + ticket.clienteNombre
-                  : "Efectivo"
-              }}
+            <span
+              class="h-badge"
+              [class.efectivo]="ticket.tipoPago === 'efectivo'"
+            >
+              {{ ticket.tipoPago === "efectivo" ? "Efectivo" : "Fiado" }}
             </span>
           </div>
-          <div class="total-ticket">{{ formatearMoneda(ticket.total) }}</div>
-        </div>
-
-        <!-- Lista de items dentro del ticket -->
-        <div class="items-list-mini">
-          @for (item of ticket.items; track item.id) {
-          <div class="item-mini">
-            {{ item.cantidad }}x {{ item.nombreSaborSnapshot || "Producto" }}
+          <div class="h-client">
+            {{
+              ticket.tipoPago === "fiado"
+                ? getNombreCliente(ticket.items[0].clienteId)
+                : "Venta Mostrador"
+            }}
           </div>
+          @if (ticket.notas) {
+          <div class="h-note">📝 {{ ticket.notas }}</div>
           }
         </div>
-
-        @if(ticket.notas) {
-        <div class="note-badge">📝 {{ ticket.notas }}</div>
-        }
+        <div class="h-total">
+          {{ formatearMoneda(ticket.total) }}
+        </div>
       </div>
-      } } }
+      }
     </div>
   </div>
 </div>
 }
 
-<!-- Modal Edición de Nota de TICKET -->
-@if (modalEditarVentaVisible && ticketSeleccionado) {
+<!-- MODAL EDITAR NOTA -->
+@if (modalEditarNotaVisible && ticketSeleccionado) {
 <div class="modal-backdrop center" (click)="cerrarEditarVenta()">
   <div class="dialog-box" (click)="$event.stopPropagation()">
-    <h3>✏️ Editar Ticket</h3>
-    <div class="dialog-subtitle">
-      {{ formatearMoneda(ticketSeleccionado.total) }}
-      <span
-        style="
-          font-size: 12px;
-          font-weight: normal;
-          display: block;
-          margin-top: 4px;
-          color: #888;
-        "
-      >
-        ({{ ticketSeleccionado.items.length }} productos)
+    <h3>Detalles de Venta</h3>
+
+    <div class="ticket-summary">
+      <strong>Total: {{ formatearMoneda(ticketSeleccionado.total) }}</strong>
+      <span style="display: block; margin-top: 4px; color: #888">
+        ({{ ticketSeleccionado.items.length }} productos) -
+        {{ ticketSeleccionado.fecha.toDate() | date : "shortTime" }}
       </span>
     </div>
 
@@ -299,10 +258,7 @@
       ></textarea>
     </div>
 
-    <div class="dialog-actions">
-      <button class="btn-secondary" (click)="cerrarEditarVenta()">
-        Cancelar
-      </button>
+    <div class="dialog-actions vertical-actions">
       <button
         class="btn-primary"
         (click)="guardarNotaVenta()"
@@ -310,12 +266,23 @@
       >
         Guardar Nota
       </button>
+
+      <!-- BOTÓN NUEVO -->
+      <button
+        class="btn-danger-outline"
+        (click)="eliminarTicket()"
+        [disabled]="procesando"
+      >
+        🗑️ Eliminar Venta
+      </button>
+
+      <button class="btn-text" (click)="cerrarEditarVenta()">Cerrar</button>
     </div>
   </div>
 </div>
 }
 
-<!-- Modal Rápido Nuevo Cliente -->
+<!-- MODAL NUEVO CLIENTE -->
 @if (modalNuevoCliente) {
 <div class="modal-backdrop center" (click)="cerrarModalNuevoCliente()">
   <div class="dialog-box" (click)="$event.stopPropagation()">
@@ -342,3 +309,48 @@
   </div>
 </div>
 }
+<style>
+  /* Estilos rápidos inline para el footer de 3 columnas */
+  .resumen-footer.three-cols {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #2d2d44; /* Tu color de fondo */
+    border-top: 1px solid #3d3d5c;
+    width: 100%;
+  }
+  .resumen-footer .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+  .resumen-footer .label {
+    font-size: 10px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .resumen-footer .valor {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+  }
+  .resumen-footer .valor.cash {
+    color: #22c55e;
+  }
+  .resumen-footer .valor.credit {
+    color: #f59e0b;
+  }
+  .resumen-footer .valor.debt {
+    color: #ef4444;
+  } /* Rojo para deuda global */
+
+  .resumen-footer .divider {
+    width: 1px;
+    height: 24px;
+    background: #444;
+    margin: 0 8px;
+  }
+</style>

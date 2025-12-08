@@ -5,7 +5,7 @@ import { InventarioService } from '../../core/services/inventario.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { LoteProduccion } from '../../core/models/interfaces';
+import { LoteProduccion, Venta } from '../../core/models/interfaces';
 import {
   formatearMoneda,
   calcularValorInventario,
@@ -15,24 +15,17 @@ import { Observable, combineLatest, map } from 'rxjs';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 interface ResumenDashboard {
-  // Finanzas del día
   efectivoHoy: number;
   ventasTotalesHoy: number;
   costoVendidoHoy: number;
   utilidadBrutaHoy: number;
   margenHoy: number;
-
-  // Desglose
   ventasEfectivoHoy: number;
   ventasFiadoHoy: number;
   abonosHoy: number;
-
-  // Capital Global
   valorInventario: number;
   dineroEnCalle: number;
   capitalTotal: number;
-
-  // Operativo
   totalBolsas: number;
   clientesConDeuda: number;
   rendimientoPromedio: number;
@@ -54,11 +47,7 @@ export class DashboardComponent implements OnInit {
   resumen$!: Observable<ResumenDashboard>;
   lotes$!: Observable<LoteProduccion[]>;
   nombreNegocio = 'Control Cacahuate';
-
-  // Variable de fecha real para evitar error de pipe
   fechaHoy = new Date();
-
-  // Datos para gráfico de dona
   chartData = { inventario: 0, calle: 0 };
 
   ngOnInit() {
@@ -70,14 +59,36 @@ export class DashboardComponent implements OnInit {
 
     this.lotes$ = this.inventarioService.getLotes$();
 
+    // USAMOS getVentasHoyReales$ PARA SUMAR EN VIVO
     this.resumen$ = combineLatest([
       this.inventarioService.getInventario$(),
-      this.ventasService.getCajaDia$(),
+      this.ventasService.getVentasHoyReales$(), // Fuente real
+      this.ventasService.getCajaDia$(), // Solo para abonos
       this.clientesService.getClientes$(),
       this.inventarioService.getLotes$(),
     ]).pipe(
-      map(([inventarios, caja, clientes, lotes]) => {
-        // --- CÁLCULOS GLOBALES ---
+      map(([inventarios, ventasHoy, cajaDia, clientes, lotes]) => {
+        // SUMA MANUAL DE VENTAS (Corrección de datos)
+        let ventasEfectivo = 0;
+        let ventasFiado = 0;
+        let costoVendido = 0;
+
+        ventasHoy.forEach((v) => {
+          const totalVenta = v.cantidad * v.precioUnitario;
+          const costoVenta = v.cantidad * v.costoUnitario;
+
+          if (v.tipoPago === 'efectivo') {
+            ventasEfectivo += totalVenta;
+          } else {
+            ventasFiado += totalVenta;
+          }
+          costoVendido += costoVenta;
+        });
+
+        // Abonos los tomamos de la caja (si no moviste la colección de abonos)
+        const efectivoAbonos = cajaDia?.efectivoAbonos || 0;
+
+        // CÁLCULOS GLOBALES
         const valorInventario = calcularValorInventario(inventarios);
         const totalBolsas = inventarios.reduce(
           (sum, inv) => sum + inv.cantidad,
@@ -92,17 +103,9 @@ export class DashboardComponent implements OnInit {
         ).length;
         const rendimientoPromedio = calcularRendimientoPromedio(lotes);
 
-        // --- CÁLCULOS DEL DÍA ---
-        const efectivoVentas = caja?.efectivoVentas || 0;
-        const efectivoAbonos = caja?.efectivoAbonos || 0;
-        const ventasFiado = caja?.ventasFiado || 0;
-        const costoVendido = caja?.costoVendido || 0;
-
-        // Flujo de Caja
-        const efectivoHoy = efectivoVentas + efectivoAbonos;
-
-        // Estado de Resultados
-        const ventasTotalesHoy = efectivoVentas + ventasFiado;
+        // RESULTADOS
+        const efectivoHoy = ventasEfectivo + efectivoAbonos;
+        const ventasTotalesHoy = ventasEfectivo + ventasFiado;
         const utilidadBrutaHoy = ventasTotalesHoy - costoVendido;
 
         const margenHoy =
@@ -121,7 +124,7 @@ export class DashboardComponent implements OnInit {
           costoVendidoHoy: costoVendido,
           utilidadBrutaHoy,
           margenHoy,
-          ventasEfectivoHoy: efectivoVentas,
+          ventasEfectivoHoy: ventasEfectivo,
           ventasFiadoHoy: ventasFiado,
           abonosHoy: efectivoAbonos,
           valorInventario,

@@ -7,6 +7,7 @@ import {
   getDoc,
   updateDoc,
   Timestamp,
+  increment,
   runTransaction, // Importante para la consistencia de datos
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
@@ -153,6 +154,15 @@ export class InventarioService {
         inventarioRestante: 0, // Dato referencial en caso de error
       };
     }
+  }
+
+  // === NUEVO: Reponer Inventario (Devolución) ===
+  async reponerInventario(saborId: string, cantidad: number): Promise<void> {
+    const inventarioRef = doc(this.inventarioCollection, saborId);
+    await updateDoc(inventarioRef, {
+      cantidad: increment(cantidad),
+      updatedAt: Timestamp.now(),
+    });
   }
 
   getLotes$(): Observable<LoteProduccion[]> {

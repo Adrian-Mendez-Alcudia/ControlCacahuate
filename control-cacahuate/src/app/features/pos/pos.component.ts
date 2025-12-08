@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core'; // Agregamos OnDestroy
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SaboresService } from '../../core/services/sabores.service';
@@ -8,20 +8,18 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { CarritoService } from '../../core/services/carrito.service';
 import { Sabor, Cliente, Venta } from '../../core/models/interfaces';
-import { formatearMoneda, generarId } from '../../core/utils/calculos.utils';
-import { Observable, combineLatest, map, tap } from 'rxjs';
+import { formatearMoneda } from '../../core/utils/calculos.utils';
+import { Observable, combineLatest, map, tap, Subscription } from 'rxjs'; // Importamos Subscription
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
-// Interfaz extendida para la vista
 interface SaborConInventario extends Sabor {
   cantidad: number;
   costoPromedio: number;
 }
 
-// Nueva interfaz para el historial agrupado (Ticket)
 interface TicketVenta {
-  transactionId: string;
-  fecha: any; // Timestamp
+  idPrincipal: string;
+  fecha: any;
   total: number;
   items: Venta[];
   tipoPago: 'efectivo' | 'fiado';
@@ -36,8 +34,7 @@ interface TicketVenta {
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.scss',
 })
-export class PosComponent implements OnInit {
-  // Inyección de dependencias
+export class PosComponent implements OnInit, OnDestroy {
   private saboresService = inject(SaboresService);
   private inventarioService = inject(InventarioService);
   private ventasService = inject(VentasService);
@@ -45,33 +42,33 @@ export class PosComponent implements OnInit {
   private configuracionService = inject(ConfiguracionService);
   public carritoService = inject(CarritoService);
 
-  // Data Streams
   saboresConInventario$!: Observable<SaborConInventario[]>;
-  ticketsHoy$!: Observable<TicketVenta[]>; // CAMBIO: Ahora son tickets, no ventas sueltas
+  dineroEnCalle$!: Observable<number>;
 
-  // Clientes Local
-  clientes: Cliente[] = [];
+  // Variables para clientes
+  clientesLista: Cliente[] = [];
   clientesFiltrados: Cliente[] = [];
-  terminoBusqueda = '';
+  clientesSubscription!: Subscription; // Para limpiar memoria
 
-  // Estado Local
   saboresMap = new Map<string, SaborConInventario>();
   precioVenta = 10;
+
+  // Totales footer
   efectivoHoy = 0;
   fiadoHoy = 0;
 
-  // Modales
+  terminoBusqueda = '';
+
   modalCobroVisible = false;
   modalNuevoCliente = false;
-  modalHistorialVisible = false;
-  modalEditarVentaVisible = false;
   nuevoClienteAlias = '';
 
-  // Edición de Ticket
+  modalHistorialVisible = false;
+  modalEditarNotaVisible = false;
+  ticketsHistorial: TicketVenta[] = [];
   ticketSeleccionado: TicketVenta | null = null;
   notaEdicion = '';
 
-  // Feedback UI
   procesando = false;
   mensaje = '';
   mensajeError = false;
@@ -80,8 +77,18 @@ export class PosComponent implements OnInit {
     this.cargarDatos();
   }
 
+  ngOnDestroy() {
+    // Buena práctica: desconectar la suscripción al salir para no dejar fugas de memoria
+    if (this.clientesSubscription) {
+      this.clientesSubscription.unsubscribe();
+    }
+  }
+
   cargarDatos() {
-    // 1. Cargar productos e inventario
+    // 1. Deuda Total (Observable directo, se maneja con | async en HTML si se usa)
+    this.dineroEnCalle$ = this.clientesService.getDineroEnCalle$();
+
+    // 2. Inventario y Sabores
     this.saboresConInventario$ = combineLatest([
       this.saboresService.getSabores$(),
       this.inventarioService.getInventario$(),
@@ -102,86 +109,35 @@ export class PosComponent implements OnInit {
       })
     );
 
-    // 2. Cargar Clientes
-    this.clientesService.getClientes$().subscribe((data) => {
-      this.clientes = data;
-      this.filtrarClientes();
-    });
+    // 3. CORRECCIÓN AQUÍ: Suscripción explícita a Clientes
+    // Antes solo definíamos el observable y nadie lo llamaba.
+    this.clientesSubscription = this.clientesService
+      .getClientes$()
+      .subscribe((clientes) => {
+        this.clientesLista = clientes;
+        this.filtrarClientes(); // Actualizar lista filtrada inicial
+        console.log('Clientes cargados en POS:', clientes.length); // Debug
+      });
 
-    // 3. Configuración
     this.configuracionService.config$.subscribe((config) => {
       if (config) this.precioVenta = config.precioVentaDefault;
     });
 
-    // 4. Caja del día
-    this.ventasService.getCajaDia$().subscribe((caja) => {
-      if (caja) {
-        this.efectivoHoy =
-          (caja.efectivoVentas || 0) + (caja.efectivoAbonos || 0);
-        this.fiadoHoy = caja.ventasFiado || 0;
-      }
+    // Ventas de hoy
+    this.ventasService.getVentasHoyReales$().subscribe((ventas) => {
+      this.efectivoHoy = 0;
+      this.fiadoHoy = 0;
+
+      ventas.forEach((v) => {
+        const total = v.cantidad * v.precioUnitario;
+        if (v.tipoPago === 'efectivo') {
+          this.efectivoHoy += total;
+        } else {
+          this.fiadoHoy += total;
+        }
+      });
     });
-
-    // 5. Historial Agrupado (MAGIA AQUÍ)
-    this.ticketsHoy$ = this.ventasService.getVentasHoy$().pipe(
-      map((ventas) => {
-        const grupos = new Map<string, TicketVenta>();
-
-        ventas.forEach((venta) => {
-          // Usamos transactionId si existe, si no, agrupamos por id (legacy)
-          const tId = venta.transactionId || venta.id;
-
-          if (!grupos.has(tId)) {
-            grupos.set(tId, {
-              transactionId: tId,
-              fecha: venta.fecha,
-              total: 0,
-              items: [],
-              tipoPago: venta.tipoPago,
-              clienteNombre: venta.clienteId
-                ? this.getNombreCliente(venta.clienteId)
-                : undefined,
-              notas: venta.notas, // Tomamos la nota de cualquier item del grupo
-            });
-          }
-
-          const grupo = grupos.get(tId)!;
-          grupo.items.push(venta);
-          grupo.total += venta.cantidad * venta.precioUnitario;
-        });
-
-        // Convertir Map a Array y ordenar por fecha
-        return Array.from(grupos.values()).sort(
-          (a, b) => b.fecha.toMillis() - a.fecha.toMillis()
-        );
-      })
-    );
   }
-
-  // Lógica de filtrado
-  filtrarClientes() {
-    if (!this.terminoBusqueda.trim()) {
-      this.clientesFiltrados = this.clientes;
-    } else {
-      const termino = this.terminoBusqueda.toLowerCase();
-      this.clientesFiltrados = this.clientes.filter((c) =>
-        c.alias.toLowerCase().includes(termino)
-      );
-    }
-  }
-
-  getIniciales(nombre: string): string {
-    return nombre ? nombre.substring(0, 2).toUpperCase() : '??';
-  }
-
-  getNombreCliente(id: string): string {
-    const c = this.clientes.find((cli) => cli.id === id);
-    return c ? c.alias : 'Desconocido';
-  }
-
-  // ==========================================
-  // LÓGICA DEL CARRITO
-  // ==========================================
 
   agregarAlCarrito(saborParcial: { id: string }) {
     const saborReal = this.saboresMap.get(saborParcial.id);
@@ -211,21 +167,29 @@ export class PosComponent implements OnInit {
     return this.carritoService.obtenerCantidad(id);
   }
 
-  // ==========================================
-  // PROCESAMIENTO DE VENTAS (Con Transaction ID)
-  // ==========================================
+  filtrarClientes() {
+    if (!this.terminoBusqueda) {
+      this.clientesFiltrados = this.clientesLista;
+    } else {
+      const term = this.terminoBusqueda.toLowerCase();
+      this.clientesFiltrados = this.clientesLista.filter((c) =>
+        c.alias.toLowerCase().includes(term)
+      );
+    }
+  }
 
-  async procesarVenta(tipoPago: 'efectivo' | 'fiado', clienteId?: string) {
+  async procesarVentaCarrito(
+    tipoPago: 'efectivo' | 'fiado',
+    clienteId?: string
+  ) {
     const items = this.carritoService.carrito();
     if (items.length === 0 || this.procesando) return;
 
     this.procesando = true;
     let errores = 0;
+    let exitos = 0;
 
-    // GENERAMOS UN ID DE TRANSACCIÓN ÚNICO PARA TODO EL CARRITO
-    const transactionId = generarId();
-
-    const promesasVenta = items.map((item) =>
+    const promesas = items.map((item) =>
       this.ventasService.procesarVenta({
         saborId: item.sabor.id,
         cantidad: item.cantidad,
@@ -233,20 +197,19 @@ export class PosComponent implements OnInit {
         clienteId,
         precioVenta: item.precioVenta,
         nombreSaborSnapshot: item.sabor.nombre,
-        transactionId: transactionId, // <--- ESTO UNE AL GRUPO
       })
     );
 
-    const resultados = await Promise.all(promesasVenta);
+    const resultados = await Promise.all(promesas);
 
     resultados.forEach((res) => {
       if (!res.success) {
         errores++;
         console.warn(res.error);
+      } else {
+        exitos++;
       }
     });
-
-    this.procesando = false;
 
     if (errores === 0) {
       this.mostrarMensaje(
@@ -257,66 +220,23 @@ export class PosComponent implements OnInit {
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     } else {
       this.mostrarMensaje(
-        `Problemas con ${errores} productos (revisar stock)`,
+        `Se vendieron ${exitos}, pero hubo ${errores} errores.`,
         true
       );
+      if (exitos > 0) this.carritoService.limpiarCarrito();
+      this.cerrarModal();
     }
+
+    this.procesando = false;
   }
 
-  venderEfectivo() {
-    this.procesarVenta('efectivo');
+  async venderEfectivo() {
+    await this.procesarVentaCarrito('efectivo');
   }
 
-  venderFiado(cliente: Cliente) {
-    this.procesarVenta('fiado', cliente.id);
+  async venderFiado(cliente: Cliente) {
+    await this.procesarVentaCarrito('fiado', cliente.id);
   }
-
-  // ==========================================
-  // HISTORIAL Y EDICIÓN (A NIVEL TICKET)
-  // ==========================================
-
-  abrirHistorial() {
-    this.modalHistorialVisible = true;
-  }
-
-  cerrarHistorial() {
-    this.modalHistorialVisible = false;
-  }
-
-  abrirEditarTicket(ticket: TicketVenta) {
-    this.ticketSeleccionado = ticket;
-    this.notaEdicion = ticket.notas || '';
-    this.modalEditarVentaVisible = true;
-  }
-
-  cerrarEditarVenta() {
-    this.modalEditarVentaVisible = false;
-    this.ticketSeleccionado = null;
-    this.notaEdicion = '';
-  }
-
-  async guardarNotaVenta() {
-    if (!this.ticketSeleccionado) return;
-
-    this.procesando = true;
-    try {
-      // Actualizamos usando el transactionId del ticket
-      await this.ventasService.actualizarNotaTransaccion(
-        this.ticketSeleccionado.transactionId,
-        this.notaEdicion
-      );
-      this.mostrarMensaje('Nota de ticket actualizada');
-      this.cerrarEditarVenta();
-    } catch (e) {
-      this.mostrarMensaje('Error al guardar nota', true);
-    } finally {
-      this.procesando = false;
-    }
-  }
-
-  // ==========================================
-  // GESTIÓN DE CLIENTES RÁPIDA
-  // ==========================================
 
   async crearClienteYFiar() {
     const alias = this.nuevoClienteAlias.trim();
@@ -325,12 +245,20 @@ export class PosComponent implements OnInit {
       return;
     }
 
+    if (this.procesando) return;
     this.procesando = true;
+
     try {
       const cliente = await this.clientesService.crearCliente({ alias });
       this.procesando = false;
       this.modalNuevoCliente = false;
       this.nuevoClienteAlias = '';
+
+      // Actualizamos la lista localmente para que aparezca inmediato
+      // (aunque la suscripción lo hará, esto da feedback instantáneo)
+      this.clientesLista.push(cliente);
+      this.filtrarClientes();
+
       this.venderFiado(cliente);
     } catch (e) {
       this.procesando = false;
@@ -338,9 +266,88 @@ export class PosComponent implements OnInit {
     }
   }
 
-  // ==========================================
-  // UI & HELPERS
-  // ==========================================
+  abrirHistorial() {
+    this.modalHistorialVisible = true;
+    this.ventasService.getUltimasVentas$().subscribe((ventas) => {
+      this.agruparVentasEnTickets(ventas);
+    });
+  }
+
+  cerrarHistorial() {
+    this.modalHistorialVisible = false;
+  }
+
+  private agruparVentasEnTickets(ventas: Venta[]) {
+    const grupos: TicketVenta[] = [];
+
+    ventas.forEach((venta) => {
+      const fechaVenta = venta.fecha.toDate().getTime();
+
+      const grupoExistente = grupos.find((g) => {
+        const fechaGrupo = g.fecha.toDate().getTime();
+        return (
+          Math.abs(fechaGrupo - fechaVenta) < 2000 &&
+          g.tipoPago === venta.tipoPago &&
+          g.clienteNombre === (venta.clienteId || 'Anónimo')
+        );
+      });
+
+      if (grupoExistente) {
+        grupoExistente.items.push(venta);
+        grupoExistente.total += venta.cantidad * venta.precioUnitario;
+      } else {
+        grupos.push({
+          idPrincipal: venta.id,
+          fecha: venta.fecha,
+          total: venta.cantidad * venta.precioUnitario,
+          items: [venta],
+          tipoPago: venta.tipoPago,
+          // @ts-ignore
+          notas: venta.notas || '',
+          clienteNombre: venta.clienteId,
+        });
+      }
+    });
+
+    this.ticketsHistorial = grupos;
+  }
+
+  getNombreCliente(clienteId?: string): string {
+    if (!clienteId) return 'Cliente Mostrador';
+    const c = this.clientesLista.find((cli) => cli.id === clienteId);
+    return c ? c.alias : 'Cliente Desconocido';
+  }
+
+  abrirEditarNota(ticket: TicketVenta) {
+    this.ticketSeleccionado = ticket;
+    this.notaEdicion = ticket.notas || '';
+    this.modalEditarNotaVisible = true;
+  }
+
+  cerrarEditarVenta() {
+    this.modalEditarNotaVisible = false;
+    this.ticketSeleccionado = null;
+  }
+
+  async guardarNotaVenta() {
+    if (!this.ticketSeleccionado) return;
+
+    this.procesando = true;
+    try {
+      const promesas = this.ticketSeleccionado.items.map((item) =>
+        this.ventasService.actualizarNotaVenta(item.id, this.notaEdicion)
+      );
+
+      await Promise.all(promesas);
+
+      this.mostrarMensaje('Nota guardada');
+      this.cerrarEditarVenta();
+    } catch (error) {
+      console.error(error);
+      this.mostrarMensaje('Error al guardar nota', true);
+    }
+    this.procesando = false;
+  }
 
   abrirModalCobrar() {
     if (this.carritoService.cantidadItems() === 0) {
@@ -350,6 +357,32 @@ export class PosComponent implements OnInit {
     this.terminoBusqueda = '';
     this.filtrarClientes();
     this.modalCobroVisible = true;
+  }
+
+  async eliminarTicket() {
+    if (!this.ticketSeleccionado) return;
+
+    const confirmar = confirm(
+      '¿Estás seguro de ELIMINAR esta venta? Se devolverá el stock y se ajustará la deuda.'
+    );
+    if (!confirmar) return;
+
+    this.procesando = true;
+    try {
+      // Borramos cada venta individual del grupo
+      const promesas = this.ticketSeleccionado.items.map((item) =>
+        this.ventasService.eliminarVenta(item)
+      );
+
+      await Promise.all(promesas);
+
+      this.mostrarMensaje('Venta eliminada correctamente');
+      this.cerrarEditarVenta();
+    } catch (error) {
+      console.error(error);
+      this.mostrarMensaje('Error al eliminar venta', true);
+    }
+    this.procesando = false;
   }
 
   cerrarModal() {
