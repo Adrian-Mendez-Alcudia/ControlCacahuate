@@ -7,6 +7,7 @@ import { VentasService } from '../../core/services/ventas.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { CajaDiaria } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-corte-caja',
@@ -42,8 +43,51 @@ export class CorteCajaComponent implements OnInit {
   async ngOnInit() {
     this.cargando = true;
     try {
+      // 1. Obtenemos el resumen base (para abonos y estado del corte)
       this.cajaHoy = await this.ventasService.getCajaDiaHoy();
 
+      // 2. CORRECCIÓN: Si el corte NO está hecho, recalculamos "en vivo"
+      // para coincidir exactamente con el Dashboard.
+      if (!this.cajaHoy?.corteRealizado) {
+        // Obtenemos las ventas reales de la base de datos (igual que el Dashboard)
+        const ventasReales = await firstValueFrom(
+          this.ventasService.getVentasHoyReales$()
+        );
+
+        // Sumamos manualmente el efectivo
+        let ventasEfectivoCalculadas = 0;
+        ventasReales.forEach((v) => {
+          if (v.tipoPago === 'efectivo') {
+            ventasEfectivoCalculadas += v.cantidad * v.precioUnitario;
+          }
+        });
+
+        // Si por alguna razón no existía la caja (era null), la creamos virtualmente
+        if (!this.cajaHoy) {
+          this.cajaHoy = {
+            fecha: new Date(), // Usamos fecha simple por compatibilidad
+            efectivoVentas: 0,
+            efectivoAbonos: 0,
+            totalEfectivo: 0,
+            ventasFiado: 0,
+            costoVendido: 0,
+            corteRealizado: false,
+          } as any; // 'as any' para evitar conflictos estrictos de tipos si faltan campos
+        }
+
+        // 3. Sobrescribimos los valores del resumen con los REALES calculados
+        const abonos = this.cajaHoy!.efectivoAbonos || 0; // Mantenemos los abonos
+
+        this.cajaHoy!.efectivoVentas = ventasEfectivoCalculadas;
+        this.cajaHoy!.totalEfectivo = ventasEfectivoCalculadas + abonos;
+
+        console.log(
+          '✅ Datos de caja sincronizados con ventas reales:',
+          this.cajaHoy
+        );
+      }
+
+      // 4. Si ya estaba hecho el corte, cargamos los datos históricos
       if (this.cajaHoy?.corteRealizado) {
         this.corteYaRealizado = true;
         if (this.cajaHoy.datosCorte) {
@@ -95,7 +139,7 @@ export class CorteCajaComponent implements OnInit {
     }
   }
 
-  // NUEVO: Calcula el retiro basado en cuánto quieres dejar de fondo
+  // Calcula el retiro basado en cuánto quieres dejar de fondo
   dejarFondo(montoObjetivo: number) {
     if (this.efectivoContado === null) return;
 
