@@ -59,27 +59,19 @@
     } }
   </div>
 
-  <!-- FOOTER RESUMEN -->
+  <!-- FOOTER RESUMEN (3 Columnas Unificadas) -->
   @if (carritoService.cantidadItems() === 0) {
   <div class="resumen-footer three-cols">
-    <!-- Columna 1: Efectivo Hoy -->
     <div class="stat">
       <span class="label">Ventas Hoy</span>
       <span class="valor cash">{{ formatearMoneda(efectivoHoy) }}</span>
     </div>
-
     <div class="divider"></div>
-
-    <!-- Columna 2: Fiado Hoy (Lo que se fió hoy) -->
     <div class="stat">
       <span class="label">Fiado Hoy</span>
       <span class="valor credit">{{ formatearMoneda(fiadoHoy) }}</span>
     </div>
-
     <div class="divider"></div>
-
-    <!-- Columna 3: TOTAL DEUDA (Lo que te deben todos históricamente) -->
-    <!-- Este es el dato que te faltaba -->
     <div class="stat">
       <span class="label">Total Deuda</span>
       <span class="valor debt">
@@ -105,12 +97,14 @@
 </div>
 }
 
-<!-- MODAL COBRO -->
+<!-- MODAL COBRO (OPTIMIZADO MÓVIL) -->
 @if (modalCobroVisible) {
 <div class="modal-backdrop" (click)="cerrarModal()">
-  <div class="bottom-sheet" (click)="$event.stopPropagation()">
+  <!-- Agregamos clase mobile-optimized -->
+  <div class="bottom-sheet mobile-optimized" (click)="$event.stopPropagation()">
     <div class="sheet-handle"></div>
 
+    <!-- 1. Header Fijo -->
     <div class="sheet-header">
       <h2>🛒 Tu Pedido</h2>
       <button
@@ -121,33 +115,31 @@
       </button>
     </div>
 
-    <div class="cart-items-scroll">
+    <!-- 2. Lista Carrito (Limitada en altura) -->
+    <div class="cart-mini-list">
       @for (item of carritoService.carrito(); track item.sabor.id) {
-      <div class="cart-row">
-        <div class="row-info">
-          <span class="emoji">{{ item.sabor.emoji }}</span>
-          <span class="name">{{ item.sabor.nombre }}</span>
-        </div>
-
-        <div class="row-controls">
+      <div class="cart-row-compact">
+        <span class="qty-badge">{{ item.cantidad }}</span>
+        <span class="name">{{ item.sabor.nombre }}</span>
+        <span class="price">{{
+          formatearMoneda(item.cantidad * item.precioVenta)
+        }}</span>
+        <div class="mini-actions">
           <button (click)="restarDelCarrito(item.sabor)">-</button>
-          <span class="qty">{{ item.cantidad }}</span>
           <button (click)="agregarAlCarrito(item.sabor)">+</button>
-        </div>
-
-        <div class="row-price">
-          {{ formatearMoneda(item.cantidad * item.precioVenta) }}
         </div>
       </div>
       }
     </div>
 
-    <div class="sheet-total">
+    <!-- 3. Total Fijo -->
+    <div class="sheet-total compact">
       <span>Total a Pagar</span>
       <span class="amount">{{ formatearMoneda(carritoService.total()) }}</span>
     </div>
 
-    <div class="payment-actions">
+    <!-- 4. Acciones de Pago (Flexible) -->
+    <div class="payment-area-flexible">
       <div class="search-box">
         <input
           type="text"
@@ -165,21 +157,36 @@
         <span class="icon">💵</span> Cobrar Efectivo
       </button>
 
-      <div class="credit-section">
-        <p>O fiar a:</p>
-        <div class="clients-scroll">
+      <div class="credit-section-flex">
+        <p class="section-title">O fiar a:</p>
+
+        <!-- Lista de Clientes con Scroll Inteligente -->
+        <div class="clients-scroll-flex">
           <button class="btn-chip add" (click)="abrirModalNuevoCliente()">
-            + Nuevo
+            + Nuevo Cliente
           </button>
+
           @for (cliente of clientesFiltrados; track cliente.id) {
           <button
-            class="btn-chip"
+            class="btn-chip client-item"
             (click)="venderFiado(cliente)"
             [disabled]="procesando"
           >
-            {{ cliente.alias }}
+            <div class="client-left">
+              <span class="c-name">{{ cliente.alias }}</span>
+            </div>
+            <span class="c-debt" [class.has-debt]="cliente.saldoPendiente > 0">
+              {{
+                cliente.saldoPendiente > 0
+                  ? "Debe: " + formatearMoneda(cliente.saldoPendiente)
+                  : ""
+              }}
+            </span>
           </button>
           }
+
+          <!-- Colchón para facilitar el touch abajo -->
+          <div class="touch-spacer"></div>
         </div>
       </div>
     </div>
@@ -267,7 +274,6 @@
         Guardar Nota
       </button>
 
-      <!-- BOTÓN NUEVO -->
       <button
         class="btn-danger-outline"
         (click)="eliminarTicket()"
@@ -309,28 +315,33 @@
   </div>
 </div>
 }
+
 <style>
-  /* Estilos rápidos inline para el footer de 3 columnas */
+  /* =========================================
+   ESTILOS OPTIMIZADOS PARA MÓVIL
+   ========================================= */
+
+  /* 1. Footer Unificado */
   .resumen-footer.three-cols {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: #2d2d44; /* Tu color de fondo */
+    background: #2d2d44;
     border-top: 1px solid #3d3d5c;
     width: 100%;
+    padding-bottom: env(safe-area-inset-bottom, 20px); /* Respetar barra iOS */
   }
   .resumen-footer .stat {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1;
   }
   .resumen-footer .label {
     font-size: 10px;
     color: #aaa;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
   .resumen-footer .valor {
     font-size: 16px;
@@ -345,12 +356,164 @@
   }
   .resumen-footer .valor.debt {
     color: #ef4444;
-  } /* Rojo para deuda global */
-
+  }
   .resumen-footer .divider {
     width: 1px;
     height: 24px;
     background: #444;
     margin: 0 8px;
+  }
+
+  /* 2. Modal "Bottom Sheet" Inteligente */
+  .bottom-sheet.mobile-optimized {
+    /* Fija la altura máxima al 85% de la pantalla para no tapar todo arriba */
+    max-height: 85vh;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evita que el contenedor principal scrollee */
+    border-radius: 20px 20px 0 0;
+    background: #1e1e2e;
+  }
+
+  /* Header del modal fijo */
+  .sheet-header {
+    flex-shrink: 0;
+    padding: 16px 20px;
+    border-bottom: 1px solid #333;
+  }
+
+  /* Lista del carrito pequeña (máximo 20% de pantalla) */
+  .cart-mini-list {
+    flex-shrink: 0;
+    max-height: 20vh;
+    overflow-y: auto;
+    background: #181825;
+    padding: 8px 16px;
+    border-bottom: 1px dashed #333;
+  }
+  .cart-row-compact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+  .cart-row-compact .qty-badge {
+    background: #f59e0b;
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .cart-row-compact .name {
+    flex: 1;
+    color: #ddd;
+  }
+  .cart-row-compact .price {
+    color: #22c55e;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .mini-actions button {
+    background: #333;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    margin-left: 2px;
+  }
+
+  /* Total Compacto */
+  .sheet-total.compact {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    background: #1e1e2e;
+    border-bottom: 1px solid #333;
+  }
+
+  /* Área Flexible de Pagos */
+  .payment-area-flexible {
+    flex: 1; /* Toma el espacio restante */
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Truco Flexbox para permitir scroll interno */
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .search-box {
+    flex-shrink: 0;
+  }
+  .btn-pay.cash {
+    flex-shrink: 0;
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .credit-section-flex {
+    flex: 1; /* Toma el resto del espacio para la lista */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 8px;
+  }
+  .section-title {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  /* Scroll de Clientes Definitivo */
+  .clients-scroll-flex {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Botones Gorditos */
+  .btn-chip {
+    flex-shrink: 0; /* No aplastarse */
+    padding: 14px 16px;
+    min-height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2a2a3c;
+    border: 1px solid #3d3d5c;
+    border-radius: 12px;
+    color: white;
+  }
+  .btn-chip:active {
+    background: #3d3d5c;
+    transform: scale(0.98);
+  }
+  .btn-chip.add {
+    justify-content: center;
+    background: #333;
+    border: 1px dashed #666;
+  }
+
+  .btn-chip .c-debt {
+    font-size: 11px;
+    color: #666;
+    font-weight: normal;
+  }
+  .btn-chip .c-debt.has-debt {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* El Colchón Sagrado */
+  .touch-spacer {
+    height: 60px; /* Espacio libre al final */
+    flex-shrink: 0;
   }
 </style>

@@ -1,18 +1,28 @@
-// Variables
+// ==========================================
+// VARIABLES & TEMA
+// ==========================================
 $bg-dark: #0f0f1a;
 $card-bg: #1e1e32;
 $text-light: #ffffff;
-$accent-color: #f59e0b;
-$success-color: #22c55e;
-$danger-color: #ef4444;
+$accent-color: #f59e0b; // Naranja
+$success-color: #22c55e; // Verde
+$danger-color: #ef4444; // Rojo
+$border-color: rgba(255, 255, 255, 0.08);
 
+// ==========================================
+// LAYOUT PRINCIPAL
+// ==========================================
 .pos-container {
   padding: 16px;
-  padding-bottom: 120px;
+  // Colchón inferior para que no tape el footer + botón flotante
+  padding-bottom: 140px;
   max-width: 600px;
   margin: 0 auto;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
+// ================= HEADER =================
 .header {
   display: flex;
   justify-content: space-between;
@@ -22,46 +32,49 @@ $danger-color: #ef4444;
   .brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 
     .logo {
-      font-size: 24px;
+      font-size: 28px;
+      animation: bounce 2s infinite;
     }
+
     h1 {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 800;
       margin: 0;
-      background: linear-gradient(to right, #fff, #aaa);
+      background: linear-gradient(to right, #fff, #94a3b8);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
   }
 
-  // Nuevo botón historial
   .btn-history {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid $border-color;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    color: $text-light;
 
     span {
       font-size: 20px;
     }
 
     &:active {
-      background: rgba(255, 255, 255, 0.2);
+      transform: scale(0.9);
+      background: rgba(255, 255, 255, 0.1);
     }
   }
 }
 
-// Grid de Productos
+// ================= GRID PRODUCTOS =================
 .grid-productos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -74,30 +87,39 @@ $danger-color: #ef4444;
   padding: 12px;
   text-align: center;
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid $border-color;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  transition: transform 0.1s, border-color 0.2s;
+  transition: all 0.2s;
   cursor: pointer;
   user-select: none;
-  aspect-ratio: 1 / 1.1;
+  aspect-ratio: 1 / 1.15;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
 
   &:active {
     transform: scale(0.96);
-    border-color: var(--card-color);
+    border-color: $accent-color;
   }
 
   &.sin-stock {
-    opacity: 0.6;
-    filter: grayscale(0.8);
+    opacity: 0.5;
+    filter: grayscale(1);
+    pointer-events: none;
   }
 
   .emoji {
-    font-size: 32px;
-    margin-bottom: 8px;
+    font-size: 36px;
     display: block;
+    margin-top: 4px;
+  }
+
+  .card-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
   }
 
   .nombre {
@@ -106,97 +128,114 @@ $danger-color: #ef4444;
     line-height: 1.2;
     color: $text-light;
     display: block;
-    margin-bottom: 6px;
   }
 
   .stock-pill {
     font-size: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 8px;
     border-radius: 10px;
-    display: inline-block;
-    color: #aaa;
+    color: #9ca3af;
+    font-weight: 500;
 
     &.agotado {
-      background: rgba($danger-color, 0.2);
+      background: rgba($danger-color, 0.15);
       color: $danger-color;
     }
   }
 
-  // Badge Cantidad
   .badge-cantidad {
     position: absolute;
-    top: -6px;
-    right: -6px;
+    top: -8px;
+    right: -8px;
     background: $accent-color;
     color: #000;
-    font-weight: 700;
-    width: 24px;
-    height: 24px;
+    font-weight: 800;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 13px;
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
     animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 5;
   }
 
   .btn-restar-rapido {
     position: absolute;
-    top: -6px;
-    left: -6px;
-    width: 24px;
-    height: 24px;
-    background: #333;
+    top: -8px;
+    left: -8px;
+    width: 26px;
+    height: 26px;
+    background: #27273a;
     color: #fff;
-    border: none;
+    border: 1px solid $border-color;
     border-radius: 50%;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     z-index: 6;
     display: flex;
     align-items: center;
     justify-content: center;
     padding-bottom: 2px;
+
+    &:active {
+      transform: scale(0.9);
+    }
   }
 }
 
 .skeleton-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   aspect-ratio: 1 / 1.1;
   animation: pulse 1.5s infinite;
 }
 
-// Resumen Footer (cuando no hay carrito)
+// ==========================================
+// FOOTER RESUMEN (FIJO)
+// ==========================================
 .resumen-footer {
-  margin-top: 30px;
-  background: $card-bg;
-  border-radius: 16px;
-  padding: 20px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(30, 30, 50, 0.98);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid $border-color;
+  padding: 12px 16px;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
   display: flex;
-  justify-content: space-around;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  justify-content: space-between;
+  z-index: 90;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 
   .divider {
     width: 1px;
+    height: 30px;
     background: rgba(255, 255, 255, 0.1);
   }
 
   .stat {
+    flex: 1;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
     .label {
       display: block;
-      font-size: 12px;
+      font-size: 10px;
+      text-transform: uppercase;
       color: #888;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      letter-spacing: 0.5px;
     }
     .valor {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
     }
     .valor.cash {
@@ -205,23 +244,28 @@ $danger-color: #ef4444;
     .valor.credit {
       color: $accent-color;
     }
+    .valor.debt {
+      color: $danger-color;
+    }
   }
 }
 
-// Barra Flotante
+// ==========================================
+// BARRA FLOTANTE (COBRAR)
+// ==========================================
 .floating-action-bar {
   position: fixed;
-  bottom: 80px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
   width: 92%;
   max-width: 580px;
-  background: rgba(30, 30, 50, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(20, 20, 30, 0.95);
+  backdrop-filter: blur(12px);
   padding: 8px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba($success-color, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -229,17 +273,23 @@ $danger-color: #ef4444;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
   .cart-info {
+    flex: 1;
     padding-left: 16px;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 
     .count {
-      font-size: 12px;
+      font-size: 11px;
       color: #aaa;
+      text-transform: uppercase;
     }
     .total {
-      font-size: 18px;
-      font-weight: 700;
-      color: $success-color;
+      font-size: 20px;
+      font-weight: 800;
+      color: $text-light;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
     }
   }
 
@@ -249,32 +299,35 @@ $danger-color: #ef4444;
     border: none;
     padding: 12px 24px;
     border-radius: 14px;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 16px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: 0 4px 12px rgba($success-color, 0.3);
     transition: transform 0.1s;
 
     &:active {
       transform: scale(0.95);
     }
-
     span {
-      font-size: 14px;
+      font-size: 18px;
     }
   }
 }
 
-// Bottom Sheet Modal
+// ==========================================
+// MODALES & BOTTOM SHEET
+// ==========================================
 .modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;
   align-items: flex-end;
@@ -287,153 +340,158 @@ $danger-color: #ef4444;
 }
 
 .bottom-sheet {
-  background: #1e1e32;
+  background: #181825;
   width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
   border-radius: 24px 24px 0 0;
-  padding: 20px;
-  max-height: 85vh;
+  border-top: 1px solid $border-color;
   display: flex;
   flex-direction: column;
   animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
 
-  // Estilo específico para historial
-  &.history-sheet {
-    height: 70vh; // Altura fija cómoda
+  &.mobile-optimized {
+    max-height: 85vh;
+    height: auto;
+    overflow: hidden;
   }
 
   .sheet-handle {
-    width: 40px;
-    height: 4px;
+    width: 48px;
+    height: 6px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    margin: 0 auto 16px;
+    border-radius: 3px;
+    margin: 12px auto;
+    flex-shrink: 0;
   }
 
   .sheet-header {
+    padding: 0 20px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
 
     h2 {
       font-size: 18px;
       margin: 0;
+      color: $text-light;
     }
     .btn-clear {
       background: none;
       border: none;
       color: $danger-color;
       font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
     }
   }
 
-  .cart-items-scroll {
+  // === CARRITO MINI ===
+  .cart-mini-list {
+    background: rgba(0, 0, 0, 0.2);
+    max-height: 20vh;
     overflow-y: auto;
-    flex: 1;
-    margin-bottom: 16px;
-    max-height: 300px;
-  }
+    padding: 0 16px;
+    flex-shrink: 0;
 
-  .cart-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-
-    .row-info {
-      flex: 1;
-      .emoji {
-        margin-right: 8px;
-      }
-      .name {
-        font-size: 14px;
-        font-weight: 500;
-      }
-    }
-
-    .row-controls {
+    .cart-row-compact {
       display: flex;
       align-items: center;
-      gap: 12px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 4px 8px;
-      border-radius: 8px;
-      margin: 0 12px;
+      padding: 12px 0;
+      border-bottom: 1px dashed $border-color;
+      &:last-child {
+        border-bottom: none;
+      }
 
-      button {
-        width: 24px;
-        height: 24px;
-        background: #333;
-        border: none;
+      .qty-badge {
+        background: $accent-color;
+        color: #000;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-right: 12px;
+      }
+      .name {
+        flex: 1;
+        font-size: 14px;
+        color: #ddd;
+      }
+      .price {
+        font-weight: 600;
+        color: $success-color;
+        margin-right: 12px;
+      }
+
+      .mini-actions button {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid $border-color;
+        background: #2a2a3c;
         color: white;
-        border-radius: 4px;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-left: 4px;
+        &:active {
+          background: $accent-color;
+          color: #000;
+        }
       }
-
-      .qty {
-        font-weight: 600;
-        width: 16px;
-        text-align: center;
-      }
-    }
-
-    .row-price {
-      font-weight: 700;
-      color: $accent-color;
-      font-size: 14px;
-      width: 60px;
-      text-align: right;
     }
   }
 
   .sheet-total {
+    padding: 16px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 18px;
-    font-weight: 700;
-    padding: 16px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: #1e1e2e;
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
 
+    span {
+      font-size: 16px;
+      color: #aaa;
+    }
     .amount {
       color: $success-color;
       font-size: 24px;
+      font-weight: 800;
     }
   }
 
-  .payment-actions {
+  // === ZONA DE PAGO ===
+  .payment-area-flexible {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    padding: 16px 20px;
+    gap: 12px;
+    overflow: hidden;
 
-    // Buscador
-    .search-box {
-      input {
-        width: 100%;
-        padding: 12px;
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid #444;
-        border-radius: 12px;
-        color: white;
-        font-size: 14px;
-
-        &:focus {
-          outline: none;
-          border-color: $accent-color;
-        }
+    .search-box input {
+      width: 100%;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #444;
+      border-radius: 12px;
+      color: white;
+      font-size: 16px;
+      &:focus {
+        outline: none;
+        border-color: $accent-color;
       }
     }
 
-    .btn-pay {
+    .btn-pay.cash {
       width: 100%;
       padding: 16px;
-      border-radius: 12px;
+      border-radius: 14px;
       border: none;
       font-weight: 700;
       font-size: 16px;
@@ -442,48 +500,76 @@ $danger-color: #ef4444;
       justify-content: center;
       align-items: center;
       gap: 10px;
-
-      &.cash {
-        background: linear-gradient(
-          135deg,
-          $success-color,
-          darken($success-color, 10%)
-        );
-        color: #000;
+      flex-shrink: 0;
+      background: linear-gradient(
+        135deg,
+        $success-color,
+        darken($success-color, 10%)
+      );
+      color: #000;
+      box-shadow: 0 4px 12px rgba($success-color, 0.2);
+      &:active {
+        transform: scale(0.98);
       }
     }
 
-    .credit-section {
-      background: rgba(0, 0, 0, 0.2);
-      padding: 12px;
-      border-radius: 12px;
+    .credit-section-flex {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin-top: 8px;
 
-      p {
-        margin: 0 0 8px;
+      .section-title {
         font-size: 12px;
-        color: #888;
+        color: #666;
+        margin-bottom: 8px;
+        text-transform: uppercase;
       }
 
-      .clients-scroll {
+      .clients-scroll-flex {
+        flex: 1;
+        overflow-y: auto;
         display: flex;
+        flex-direction: column;
         gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 4px;
+        padding-right: 4px;
+        padding-bottom: 30px;
 
         .btn-chip {
-          background: #3d3d5c;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #252535;
+          border: 1px solid $border-color;
           color: white;
-          padding: 8px 16px;
-          border-radius: 20px;
-          white-space: nowrap;
-          cursor: pointer;
-          font-size: 13px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          min-height: 54px;
+          flex-shrink: 0;
+          transition: background 0.2s;
 
+          &:active {
+            background: #333;
+          }
           &.add {
             background: transparent;
             border: 1px dashed #666;
             color: #888;
+            justify-content: center;
+          }
+
+          .c-name {
+            font-weight: 500;
+            font-size: 15px;
+          }
+          .c-debt.has-debt {
+            color: $danger-color;
+            background: rgba($danger-color, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
           }
         }
       }
@@ -491,117 +577,156 @@ $danger-color: #ef4444;
   }
 }
 
-// Estilos para la lista de historial
-.history-list {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 4px;
+// ==========================================
+// === HISTORIAL DE VENTAS (LO QUE FALTABA) ===
+// ==========================================
 
-  .history-item {
-    background: #252540;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 10px;
+// Estilo específico para la hoja del historial
+.bottom-sheet.history-sheet {
+  height: 85vh; // Que ocupe casi toda la pantalla
+
+  .history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    padding-bottom: 40px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    border: 1px solid transparent;
+    flex-direction: column;
+    gap: 12px;
 
-    &:hover {
-      border-color: $text-light;
+    .empty-msg {
+      text-align: center;
+      color: #666;
+      margin-top: 40px;
+      font-style: italic;
     }
 
-    .h-info {
-      flex: 1;
+    .history-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid $border-color;
+      padding: 14px;
+      border-radius: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      cursor: pointer;
+      transition: all 0.2s;
 
-      .h-top {
+      &:active {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .h-info {
+        flex: 1;
         display: flex;
-        gap: 8px;
-        margin-bottom: 4px;
+        flex-direction: column;
+        gap: 6px;
 
-        .h-time {
-          color: #888;
-          font-size: 11px;
-        }
-        .h-badge {
-          font-size: 10px;
-          padding: 2px 6px;
-          border-radius: 4px;
-          background: rgba($accent-color, 0.2);
-          color: $accent-color;
+        .h-top {
+          display: flex;
+          align-items: center;
+          gap: 10px;
 
-          &.efectivo {
-            background: rgba($success-color, 0.2);
-            color: $success-color;
+          .h-time {
+            font-size: 12px;
+            color: #888;
+            font-family: monospace;
+          }
+
+          .h-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+
+            &.efectivo {
+              background: rgba($success-color, 0.15);
+              color: $success-color;
+              border: 1px solid rgba($success-color, 0.2);
+            }
+            // Fiado (por descarte)
+            &:not(.efectivo) {
+              background: rgba($accent-color, 0.15);
+              color: $accent-color;
+              border: 1px solid rgba($accent-color, 0.2);
+            }
           }
         }
+
+        .h-client {
+          font-size: 15px;
+          font-weight: 600;
+          color: $text-light;
+        }
+
+        .h-note {
+          font-size: 12px;
+          color: #999;
+          font-style: italic;
+        }
       }
 
-      .h-client {
-        font-weight: 600;
-        font-size: 14px;
-      }
-
-      .h-note {
-        font-size: 12px;
-        color: #aaa;
-        margin-top: 4px;
-        font-style: italic;
+      .h-total {
+        font-size: 18px;
+        font-weight: 700;
+        color: $text-light;
+        letter-spacing: 0.5px;
       }
     }
-
-    .h-total {
-      font-weight: 700;
-      font-size: 15px;
-      color: #fff;
-    }
-  }
-
-  .empty-msg {
-    text-align: center;
-    color: #666;
-    margin-top: 40px;
   }
 }
 
-// Dialog Box (Nuevo Cliente & Edit Note)
+// ==========================================
+// MODAL CENTRAL (ALERTAS / INPUTS)
+// ==========================================
 .dialog-box {
   background: $card-bg;
   padding: 24px;
   border-radius: 20px;
   width: 85%;
-  max-width: 320px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 340px;
+  border: 1px solid $border-color;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  text-align: center;
 
   h3 {
-    margin-top: 0;
-    margin-bottom: 16px;
-    text-align: center;
+    margin: 0 0 16px;
+    color: $text-light;
   }
 
-  // Estilo específico para input wrapper con label
-  .input-wrapper {
-    margin-bottom: 20px;
+  .ticket-summary {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    color: #ddd;
+    font-size: 14px;
+  }
+
+  .input-wrapper,
+  input {
+    width: 100%;
+    margin-bottom: 16px;
+    text-align: left;
 
     label {
       display: block;
-      margin-bottom: 8px;
-      color: #ccc;
-      font-size: 13px;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 6px;
     }
-
     textarea,
     input {
       width: 100%;
       padding: 12px;
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.3);
       border: 1px solid #444;
-      border-radius: 8px;
+      border-radius: 10px;
       color: white;
-      font-size: 16px;
       font-family: inherit;
-
+      font-size: 16px;
+      box-sizing: border-box;
       &:focus {
         outline: none;
         border-color: $accent-color;
@@ -609,53 +734,50 @@ $danger-color: #ef4444;
     }
   }
 
-  // Input simple (viejo estilo mantenido para compatibilidad si se usa solo)
-  input:not(.input-wrapper input) {
-    width: 100%;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #444;
-    border-radius: 8px;
-    color: white;
-    font-size: 16px;
-    margin-bottom: 20px;
-
-    &:focus {
-      outline: none;
-      border-color: $accent-color;
-    }
-  }
-
   .dialog-actions {
     display: flex;
-    gap: 12px;
-
+    gap: 10px;
     button {
       flex: 1;
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: none;
       font-weight: 600;
       cursor: pointer;
-
       &.btn-secondary {
-        background: transparent;
-        color: #888;
+        background: rgba(255, 255, 255, 0.05);
+        color: #aaa;
       }
       &.btn-primary {
         background: $accent-color;
         color: #000;
       }
     }
+
+    &.vertical-actions {
+      flex-direction: column;
+      .btn-danger-outline {
+        background: transparent;
+        border: 1px solid $danger-color;
+        color: $danger-color;
+      }
+      .btn-text {
+        background: transparent;
+        color: #666;
+        font-size: 12px;
+      }
+    }
   }
 }
 
-// Toasts
+// ==========================================
+// TOASTS & ANIMACIONES
+// ==========================================
 .toast-notification {
   position: fixed;
   top: 16px;
   left: 50%;
-  transform: translateX(-50%); // Centrado original
+  transform: translateX(-50%);
   background: $success-color;
   color: #000;
   padding: 10px 20px;
@@ -672,34 +794,6 @@ $danger-color: #ef4444;
   }
 }
 
-// Animations
-@keyframes popIn {
-  from {
-    transform: scale(0);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translate(-50%, 100%);
-  }
-  to {
-    transform: translate(-50%, 0);
-  }
-}
-
-@keyframes slideUpModal {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
 @keyframes slideDownToast {
   from {
     transform: translate(-50%, -100%);
@@ -708,7 +802,39 @@ $danger-color: #ef4444;
     transform: translate(-50%, 0);
   }
 }
-
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 100%);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
 @keyframes pulse {
   0% {
     opacity: 0.6;
@@ -720,12 +846,11 @@ $danger-color: #ef4444;
     opacity: 0.6;
   }
 }
-
-@keyframes fadeIn {
+@keyframes popIn {
   from {
-    opacity: 0;
+    transform: scale(0);
   }
   to {
-    opacity: 1;
+    transform: scale(1);
   }
 }
