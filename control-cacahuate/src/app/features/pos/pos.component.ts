@@ -6,9 +6,9 @@ import { InventarioService } from '../../core/services/inventario.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { CarritoService } from '../../core/services/carrito.service'; // Asegúrate de importar esto
-import { Sabor, Cliente } from '../../core/models/interfaces';
-import { formatearMoneda } from '../../core/utils/calculos.utils';
+import { CarritoService } from '../../core/services/carrito.service';
+import { Sabor, Cliente, Venta } from '../../core/models/interfaces';
+import { formatearMoneda, generarId } from '../../core/utils/calculos.utils';
 import { Observable, combineLatest, map, tap } from 'rxjs';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
@@ -16,6 +16,17 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.com
 interface SaborConInventario extends Sabor {
   cantidad: number;
   costoPromedio: number;
+}
+
+// Nueva interfaz para el historial agrupado (Ticket)
+interface TicketVenta {
+  transactionId: string;
+  fecha: any; // Timestamp
+  total: number;
+  items: Venta[];
+  tipoPago: 'efectivo' | 'fiado';
+  clienteNombre?: string;
+  notas?: string;
 }
 
 @Component({
@@ -32,11 +43,16 @@ export class PosComponent implements OnInit {
   private ventasService = inject(VentasService);
   private clientesService = inject(ClientesService);
   private configuracionService = inject(ConfiguracionService);
-  public carritoService = inject(CarritoService); // Inyección pública para el HTML
+  public carritoService = inject(CarritoService);
 
   // Data Streams
   saboresConInventario$!: Observable<SaborConInventario[]>;
-  clientes$!: Observable<Cliente[]>;
+  ticketsHoy$!: Observable<TicketVenta[]>; // CAMBIO: Ahora son tickets, no ventas sueltas
+
+  // Clientes Local
+  clientes: Cliente[] = [];
+  clientesFiltrados: Cliente[] = [];
+  terminoBusqueda = '';
 
   // Estado Local
   saboresMap = new Map<string, SaborConInventario>();
@@ -47,7 +63,13 @@ export class PosComponent implements OnInit {
   // Modales
   modalCobroVisible = false;
   modalNuevoCliente = false;
+  modalHistorialVisible = false;
+  modalEditarVentaVisible = false;
   nuevoClienteAlias = '';
+
+  // Edición de Ticket
+  ticketSeleccionado: TicketVenta | null = null;
+  notaEdicion = '';
 
   // Feedback UI
   procesando = false;
@@ -59,7 +81,7 @@ export class PosComponent implements OnInit {
   }
 
   cargarDatos() {
-    // Combinar Sabores + Inventario en un solo stream
+    // 1. Cargar productos e inventario
     this.saboresConInventario$ = combineLatest([
       this.saboresService.getSabores$(),
       this.inventarioService.getInventario$(),
@@ -75,18 +97,23 @@ export class PosComponent implements OnInit {
         });
       }),
       tap((sabores) => {
-        // Guardamos referencia rápida para validaciones
         this.saboresMap.clear();
         sabores.forEach((s) => this.saboresMap.set(s.id, s));
       })
     );
 
-    this.clientes$ = this.clientesService.getClientes$();
+    // 2. Cargar Clientes
+    this.clientesService.getClientes$().subscribe((data) => {
+      this.clientes = data;
+      this.filtrarClientes();
+    });
 
+    // 3. Configuración
     this.configuracionService.config$.subscribe((config) => {
       if (config) this.precioVenta = config.precioVentaDefault;
     });
 
+    // 4. Caja del día
     this.ventasService.getCajaDia$().subscribe((caja) => {
       if (caja) {
         this.efectivoHoy =
@@ -94,17 +121,72 @@ export class PosComponent implements OnInit {
         this.fiadoHoy = caja.ventasFiado || 0;
       }
     });
+
+    // 5. Historial Agrupado (MAGIA AQUÍ)
+    this.ticketsHoy$ = this.ventasService.getVentasHoy$().pipe(
+      map((ventas) => {
+        const grupos = new Map<string, TicketVenta>();
+
+        ventas.forEach((venta) => {
+          // Usamos transactionId si existe, si no, agrupamos por id (legacy)
+          const tId = venta.transactionId || venta.id;
+
+          if (!grupos.has(tId)) {
+            grupos.set(tId, {
+              transactionId: tId,
+              fecha: venta.fecha,
+              total: 0,
+              items: [],
+              tipoPago: venta.tipoPago,
+              clienteNombre: venta.clienteId
+                ? this.getNombreCliente(venta.clienteId)
+                : undefined,
+              notas: venta.notas, // Tomamos la nota de cualquier item del grupo
+            });
+          }
+
+          const grupo = grupos.get(tId)!;
+          grupo.items.push(venta);
+          grupo.total += venta.cantidad * venta.precioUnitario;
+        });
+
+        // Convertir Map a Array y ordenar por fecha
+        return Array.from(grupos.values()).sort(
+          (a, b) => b.fecha.toMillis() - a.fecha.toMillis()
+        );
+      })
+    );
+  }
+
+  // Lógica de filtrado
+  filtrarClientes() {
+    if (!this.terminoBusqueda.trim()) {
+      this.clientesFiltrados = this.clientes;
+    } else {
+      const termino = this.terminoBusqueda.toLowerCase();
+      this.clientesFiltrados = this.clientes.filter((c) =>
+        c.alias.toLowerCase().includes(termino)
+      );
+    }
+  }
+
+  getIniciales(nombre: string): string {
+    return nombre ? nombre.substring(0, 2).toUpperCase() : '??';
+  }
+
+  getNombreCliente(id: string): string {
+    const c = this.clientes.find((cli) => cli.id === id);
+    return c ? c.alias : 'Desconocido';
   }
 
   // ==========================================
-  // LÓGICA DEL CARRITO (Puente al Servicio)
+  // LÓGICA DEL CARRITO
   // ==========================================
 
   agregarAlCarrito(saborParcial: { id: string }) {
     const saborReal = this.saboresMap.get(saborParcial.id);
     if (!saborReal) return;
 
-    // Validación de stock
     const cantidadEnCarrito = this.carritoService.obtenerCantidad(saborReal.id);
     if (cantidadEnCarrito >= saborReal.cantidad) {
       this.mostrarMensaje(`Solo hay ${saborReal.cantidad} disponibles`, true);
@@ -117,7 +199,7 @@ export class PosComponent implements OnInit {
       saborReal.cantidad
     );
 
-    if (navigator.vibrate) navigator.vibrate(50); // Feedback táctil
+    if (navigator.vibrate) navigator.vibrate(50);
   }
 
   restarDelCarrito(saborParcial: { id: string }) {
@@ -130,17 +212,19 @@ export class PosComponent implements OnInit {
   }
 
   // ==========================================
-  // PROCESAMIENTO DE VENTAS
+  // PROCESAMIENTO DE VENTAS (Con Transaction ID)
   // ==========================================
 
   async procesarVenta(tipoPago: 'efectivo' | 'fiado', clienteId?: string) {
-    const items = this.carritoService.carrito(); // Obtenemos valor del Signal
+    const items = this.carritoService.carrito();
     if (items.length === 0 || this.procesando) return;
 
     this.procesando = true;
     let errores = 0;
 
-    // Procesamos todos los items en paralelo
+    // GENERAMOS UN ID DE TRANSACCIÓN ÚNICO PARA TODO EL CARRITO
+    const transactionId = generarId();
+
     const promesasVenta = items.map((item) =>
       this.ventasService.procesarVenta({
         saborId: item.sabor.id,
@@ -148,7 +232,8 @@ export class PosComponent implements OnInit {
         tipoPago,
         clienteId,
         precioVenta: item.precioVenta,
-        nombreSaborSnapshot: item.sabor.nombre, // Para historial
+        nombreSaborSnapshot: item.sabor.nombre,
+        transactionId: transactionId, // <--- ESTO UNE AL GRUPO
       })
     );
 
@@ -178,13 +263,55 @@ export class PosComponent implements OnInit {
     }
   }
 
-  // Wrappers para la vista HTML
   venderEfectivo() {
     this.procesarVenta('efectivo');
   }
 
   venderFiado(cliente: Cliente) {
     this.procesarVenta('fiado', cliente.id);
+  }
+
+  // ==========================================
+  // HISTORIAL Y EDICIÓN (A NIVEL TICKET)
+  // ==========================================
+
+  abrirHistorial() {
+    this.modalHistorialVisible = true;
+  }
+
+  cerrarHistorial() {
+    this.modalHistorialVisible = false;
+  }
+
+  abrirEditarTicket(ticket: TicketVenta) {
+    this.ticketSeleccionado = ticket;
+    this.notaEdicion = ticket.notas || '';
+    this.modalEditarVentaVisible = true;
+  }
+
+  cerrarEditarVenta() {
+    this.modalEditarVentaVisible = false;
+    this.ticketSeleccionado = null;
+    this.notaEdicion = '';
+  }
+
+  async guardarNotaVenta() {
+    if (!this.ticketSeleccionado) return;
+
+    this.procesando = true;
+    try {
+      // Actualizamos usando el transactionId del ticket
+      await this.ventasService.actualizarNotaTransaccion(
+        this.ticketSeleccionado.transactionId,
+        this.notaEdicion
+      );
+      this.mostrarMensaje('Nota de ticket actualizada');
+      this.cerrarEditarVenta();
+    } catch (e) {
+      this.mostrarMensaje('Error al guardar nota', true);
+    } finally {
+      this.procesando = false;
+    }
   }
 
   // ==========================================
@@ -220,6 +347,8 @@ export class PosComponent implements OnInit {
       this.mostrarMensaje('Carrito vacío', true);
       return;
     }
+    this.terminoBusqueda = '';
+    this.filtrarClientes();
     this.modalCobroVisible = true;
   }
 
@@ -229,7 +358,6 @@ export class PosComponent implements OnInit {
 
   abrirModalNuevoCliente() {
     this.modalNuevoCliente = true;
-    // Hack para enfocar el input
     setTimeout(() => {
       const input = document.getElementById('inputNuevoCliente');
       if (input) input.focus();

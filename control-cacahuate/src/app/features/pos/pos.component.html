@@ -5,7 +5,11 @@
       <span class="logo">🥜</span>
       <h1>Control Cacahuate</h1>
     </div>
-    <p class="subtitle">Punto de Venta</p>
+
+    <!-- Botón Historial -->
+    <button class="btn-history" (click)="abrirHistorial()">
+      <span>📜</span>
+    </button>
   </header>
 
   <!-- Notificaciones Flotantes -->
@@ -37,7 +41,7 @@
       <div class="badge-cantidad">
         {{ getCantidadEnCarrito(sabor.id) }}
       </div>
-      <!-- Botón Restar Rápido (evita abrir el modal solo para restar 1) -->
+      <!-- Botón Restar Rápido -->
       <button
         class="btn-restar-rapido"
         (click)="$event.stopPropagation(); restarDelCarrito(sabor)"
@@ -108,6 +112,7 @@
       </button>
     </div>
 
+    <!-- Lista de Items en Carrito -->
     <div class="cart-items-scroll">
       @for (item of carritoService.carrito(); track item.sabor.id) {
       <div class="cart-row">
@@ -134,33 +139,177 @@
       <span class="amount">{{ formatearMoneda(carritoService.total()) }}</span>
     </div>
 
+    <!-- Acciones de Pago -->
     <div class="payment-actions">
+      <!-- Botón Gigante de Efectivo -->
       <button
         class="btn-pay cash"
         (click)="venderEfectivo()"
         [disabled]="procesando"
       >
-        <span class="icon">💵</span> Cobrar Efectivo
+        <div class="btn-content">
+          <span class="icon">💵</span>
+          <span class="text">Cobrar Efectivo</span>
+        </div>
       </button>
 
-      <div class="credit-section">
-        <p>O fiar a:</p>
-        <div class="clients-scroll">
-          <button class="btn-chip add" (click)="abrirModalNuevoCliente()">
-            + Nuevo
-          </button>
-          @if (clientes$ | async; as clientes) { @for (cliente of clientes;
-          track cliente.id) {
+      <!-- Sección de Fiado Mejorada -->
+      <div class="credit-section-improved">
+        <div class="credit-header">
+          <span class="title">📝 Fiar a cliente</span>
+        </div>
+
+        <!-- Buscador -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar cliente..."
+            [(ngModel)]="terminoBusqueda"
+            (input)="filtrarClientes()"
+          />
+          @if (terminoBusqueda) {
           <button
-            class="btn-chip"
+            class="clear-search"
+            (click)="terminoBusqueda = ''; filtrarClientes()"
+          >
+            ✕
+          </button>
+          }
+        </div>
+
+        <!-- Lista Vertical de Clientes -->
+        <div class="clients-list-vertical">
+          <button
+            class="client-row new-client"
+            (click)="abrirModalNuevoCliente()"
+          >
+            <div class="avatar-circle add">+</div>
+            <div class="client-info">
+              <span class="name">Nuevo Cliente</span>
+              <span class="details">Crear y fiar</span>
+            </div>
+          </button>
+
+          @for (cliente of clientesFiltrados; track cliente.id) {
+          <button
+            class="client-row"
             (click)="venderFiado(cliente)"
             [disabled]="procesando"
           >
-            {{ cliente.alias }}
+            <div class="avatar-circle">
+              {{ getIniciales(cliente.alias) }}
+            </div>
+            <div class="client-info">
+              <span class="name">{{ cliente.alias }}</span>
+            </div>
+            <div class="arrow-icon">➔</div>
           </button>
-          } }
+          } @empty {
+          <div class="no-results">
+            No se encontraron clientes con ese nombre
+          </div>
+          }
         </div>
       </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal Historial Agrupado (TICKETS) -->
+@if (modalHistorialVisible) {
+<div class="modal-backdrop" (click)="cerrarHistorial()">
+  <div class="bottom-sheet h-tall" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2>📜 Tickets de Hoy</h2>
+      <button class="btn-close" (click)="cerrarHistorial()">✕</button>
+    </div>
+
+    <div class="history-list">
+      @if (ticketsHoy$ | async; as tickets) { @if (tickets.length === 0) {
+      <div class="empty-state">
+        <p>Aún no hay ventas hoy</p>
+      </div>
+      } @else { @for (ticket of tickets; track ticket.transactionId) {
+      <!-- Tarjeta de Ticket Agrupada -->
+      <div class="history-card" (click)="abrirEditarTicket(ticket)">
+        <div class="card-header-ticket">
+          <div class="meta">
+            <span class="time">{{
+              ticket.fecha.toDate() | date : "HH:mm"
+            }}</span>
+            <span class="type" [class.fiado]="ticket.tipoPago === 'fiado'">
+              {{
+                ticket.tipoPago === "fiado"
+                  ? "Fiado: " + ticket.clienteNombre
+                  : "Efectivo"
+              }}
+            </span>
+          </div>
+          <div class="total-ticket">{{ formatearMoneda(ticket.total) }}</div>
+        </div>
+
+        <!-- Lista de items dentro del ticket -->
+        <div class="items-list-mini">
+          @for (item of ticket.items; track item.id) {
+          <div class="item-mini">
+            {{ item.cantidad }}x {{ item.nombreSaborSnapshot || "Producto" }}
+          </div>
+          }
+        </div>
+
+        @if(ticket.notas) {
+        <div class="note-badge">📝 {{ ticket.notas }}</div>
+        }
+      </div>
+      } } }
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal Edición de Nota de TICKET -->
+@if (modalEditarVentaVisible && ticketSeleccionado) {
+<div class="modal-backdrop center" (click)="cerrarEditarVenta()">
+  <div class="dialog-box" (click)="$event.stopPropagation()">
+    <h3>✏️ Editar Ticket</h3>
+    <div class="dialog-subtitle">
+      {{ formatearMoneda(ticketSeleccionado.total) }}
+      <span
+        style="
+          font-size: 12px;
+          font-weight: normal;
+          display: block;
+          margin-top: 4px;
+          color: #888;
+        "
+      >
+        ({{ ticketSeleccionado.items.length }} productos)
+      </span>
+    </div>
+
+    <div class="input-wrapper">
+      <label>Nota del Ticket:</label>
+      <textarea
+        [(ngModel)]="notaEdicion"
+        placeholder="Ej: Quedó debiendo 20 pesos..."
+        rows="3"
+      ></textarea>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn-secondary" (click)="cerrarEditarVenta()">
+        Cancelar
+      </button>
+      <button
+        class="btn-primary"
+        (click)="guardarNotaVenta()"
+        [disabled]="procesando"
+      >
+        Guardar Nota
+      </button>
     </div>
   </div>
 </div>

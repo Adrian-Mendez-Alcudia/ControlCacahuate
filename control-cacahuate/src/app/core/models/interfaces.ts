@@ -50,6 +50,10 @@ export interface Venta {
   clienteId?: string;
   fecha: Timestamp;
   nombreSaborSnapshot?: string; // Para historial histórico
+
+  // CORRECCIONES AQUI:
+  notas?: string; // Ahora es opcional (con ?)
+  transactionId?: string; // Nuevo campo para agrupar tickets
 }
 
 export interface Abono {
@@ -61,7 +65,7 @@ export interface Abono {
 }
 
 // ============================================
-// ESTADO DE CUENTA (EL QUE FALTABA)
+// ESTADO DE CUENTA
 // ============================================
 export interface MovimientoCuenta {
   id: string;

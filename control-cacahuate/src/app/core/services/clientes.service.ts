@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  increment, // <--- IMPORTANTE: Importamos esto
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
 import { Cliente, Abono, Venta, MovimientoCuenta } from '../models/interfaces';
@@ -161,21 +162,18 @@ export class ClientesService {
 
   /**
    * Agrega deuda a un cliente (llamado por ventas fiadas)
+   * CORREGIDO: Usamos increment() para evitar errores cuando se fían
+   * varios productos al mismo tiempo.
    */
   async agregarDeuda(clienteId: string, monto: number): Promise<void> {
-    const cliente = await this.getClientePorId(clienteId);
-
-    if (!cliente) {
-      throw new Error(`Cliente ${clienteId} no encontrado`);
-    }
-
-    const nuevoSaldo = Math.round((cliente.saldoPendiente + monto) * 100) / 100;
+    // Ya no necesitamos leer el cliente primero para calcular,
+    // Firestore lo hará atómicamente. Ahorramos lecturas y evitamos bugs.
 
     await updateDoc(doc(this.clientesCollection, clienteId), {
-      saldoPendiente: nuevoSaldo,
+      saldoPendiente: increment(monto), // <--- La magia está aquí
     });
 
-    console.log(`💸 Deuda agregada: +$${monto} (Total: $${nuevoSaldo})`);
+    console.log(`💸 Deuda agregada al sistema: +$${monto}`);
   }
 
   /**
@@ -215,17 +213,16 @@ export class ClientesService {
       abono.notas = datos.notas.trim();
     }
 
-    const nuevoSaldo =
-      Math.round((cliente.saldoPendiente - datos.monto) * 100) / 100;
-
+    // Aquí también usamos increment para restar de forma segura
+    // (incrementar por número negativo es restar)
     await Promise.all([
       setDoc(doc(this.abonosCollection, id), abono),
       updateDoc(doc(this.clientesCollection, datos.clienteId), {
-        saldoPendiente: nuevoSaldo,
+        saldoPendiente: increment(-datos.monto),
       }),
     ]);
 
-    console.log(`💰 Abono registrado: $${datos.monto} (Saldo: $${nuevoSaldo})`);
+    console.log(`💰 Abono registrado: $${datos.monto}`);
 
     return abono;
   }

@@ -8,6 +8,10 @@ import {
   setDoc,
   updateDoc,
   Timestamp,
+  query,
+  where,
+  getDocs,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
 import { Venta, CajaDiaria } from '../models/interfaces';
@@ -44,6 +48,7 @@ export class VentasService {
     clienteId?: string;
     precioVenta?: number;
     nombreSaborSnapshot?: string;
+    transactionId?: string; // NUEVO: ID para agrupar
   }): Promise<ResultadoVenta> {
     const cantidad = datos.cantidad;
     const precioVenta =
@@ -76,10 +81,9 @@ export class VentasService {
     const montoTotalVenta = cantidad * precioVenta;
     const costoTotalVenta = cantidad * resultadoInventario.costoUnitario;
 
-    // 4. Crear objeto Venta (CORRECCIÓN AQUÍ)
+    // 4. Crear objeto Venta
     const id = generarId();
 
-    // Inicializamos el objeto sin campos opcionales para evitar 'undefined'
     const venta: Venta = {
       id,
       saborId: datos.saborId,
@@ -90,12 +94,15 @@ export class VentasService {
       fecha: Timestamp.now(),
     };
 
-    // Agregamos clienteId SOLO si tiene valor real
+    // Agregar transactionId si existe (si no, usa el propio ID para compatibilidad)
+    if (datos.transactionId) {
+      venta.transactionId = datos.transactionId;
+    }
+
     if (datos.clienteId) {
       venta.clienteId = datos.clienteId;
     }
 
-    // Agregamos nombreSaborSnapshot SOLO si tiene valor real
     if (datos.nombreSaborSnapshot) {
       venta.nombreSaborSnapshot = datos.nombreSaborSnapshot;
     }
@@ -123,6 +130,30 @@ export class VentasService {
       console.error('Error crítico guardando venta:', error);
       return { success: false, error: 'Error guardando datos de venta' };
     }
+  }
+
+  /**
+   * Actualiza la nota de toda una transacción (grupo de ventas)
+   */
+  async actualizarNotaTransaccion(
+    transactionId: string,
+    nota: string
+  ): Promise<void> {
+    // Buscar todas las ventas con ese transactionId
+    const q = query(
+      this.ventasCollection,
+      where('transactionId', '==', transactionId)
+    );
+    const snapshot = await getDocs(q);
+
+    // Usamos batch para que sea atómico (todo o nada)
+    const batch = writeBatch(this.firestore);
+
+    snapshot.docs.forEach((d) => {
+      batch.update(d.ref, { notas: nota.trim() });
+    });
+
+    await batch.commit();
   }
 
   /**
