@@ -1,109 +1,163 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  FormsModule,
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { CorteCajaService } from '../../core/services/corte-caja.service';
+import { VentasService } from '../../core/services/ventas.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { CajaDiaria } from '../../core/models/interfaces';
 import { formatearMoneda } from '../../core/utils/calculos.utils';
-import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-corte-caja',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './corte-caja.component.html',
   styleUrl: './corte-caja.component.scss',
 })
 export class CorteCajaComponent implements OnInit {
   private corteService = inject(CorteCajaService);
+  private ventasService = inject(VentasService);
   private notificationService = inject(NotificationService);
-  private fb = inject(FormBuilder);
   private router = inject(Router);
 
-  corteForm: FormGroup;
+  // Datos
+  cajaHoy: CajaDiaria | null = null;
+  fechaHoy = new Date();
 
-  // Datos del sistema
-  ventasEfectivo = 0;
-  abonosEfectivo = 0;
-  totalSistema = 0;
+  // Inputs Usuario
+  efectivoContado: number | null = null;
+  montoRetiro: number | null = null;
+  notas: string = '';
 
-  // Calculados
+  // Cálculos
   diferencia = 0;
+  fondoFinal = 0;
+
+  // Estado
   cargando = true;
   guardando = false;
-
-  constructor() {
-    this.corteForm = this.fb.group({
-      dineroReal: [0, [Validators.required, Validators.min(0)]],
-      notas: [''],
-    });
-  }
+  corteYaRealizado = false;
 
   async ngOnInit() {
+    this.cargando = true;
     try {
-      const resumen = await this.corteService.obtenerResumenDelDia();
-      if (resumen) {
-        this.ventasEfectivo = resumen.efectivoVentas;
-        this.abonosEfectivo = resumen.efectivoAbonos;
-        this.totalSistema = resumen.totalEfectivo;
+      this.cajaHoy = await this.ventasService.getCajaDiaHoy();
 
-        // Calcular diferencia inicial (asumiendo 0 real)
-        this.calcularDiferencia();
-      } else {
-        this.notificationService.info('No hay movimientos registrados hoy');
+      if (this.cajaHoy?.corteRealizado) {
+        this.corteYaRealizado = true;
+        if (this.cajaHoy.datosCorte) {
+          this.efectivoContado = this.cajaHoy.datosCorte.contadoEnCaja;
+          this.montoRetiro = this.cajaHoy.datosCorte.montoRetirado;
+          this.diferencia = this.cajaHoy.datosCorte.diferencia;
+          this.fondoFinal = this.cajaHoy.datosCorte.fondoCajaManana;
+          this.notas = this.cajaHoy.datosCorte.notas || '';
+        }
       }
     } catch (error) {
-      this.notificationService.error('Error al cargar datos del día');
+      console.error(error);
+      this.notificationService.error('Error al cargar información de caja');
     } finally {
       this.cargando = false;
     }
+  }
 
-    // Escuchar cambios en el dinero real para actualizar diferencia
-    this.corteForm.get('dineroReal')?.valueChanges.subscribe(() => {
-      this.calcularDiferencia();
-    });
+  formatearMoneda(val: number) {
+    return formatearMoneda(val);
   }
 
   calcularDiferencia() {
-    const dineroReal = this.corteForm.get('dineroReal')?.value || 0;
-    this.diferencia = dineroReal - this.totalSistema;
+    const esperado = this.cajaHoy?.totalEfectivo || 0;
+    const contado = this.efectivoContado || 0;
+    this.diferencia = contado - esperado;
+    this.calcularFondo();
   }
 
-  formatear(valor: number): string {
-    return formatearMoneda(valor);
+  calcularFondo() {
+    const contado = this.efectivoContado || 0;
+    const retiro = this.montoRetiro || 0;
+    this.fondoFinal = contado - retiro;
   }
 
-  async realizarCorte() {
-    if (this.corteForm.invalid) return;
+  // --- ACCIONES RÁPIDAS ---
+
+  igualarAlSistema() {
+    if (!this.corteYaRealizado) {
+      this.efectivoContado = this.cajaHoy?.totalEfectivo || 0;
+      this.calcularDiferencia();
+    }
+  }
+
+  retirarTodo() {
+    if (this.efectivoContado !== null && !this.corteYaRealizado) {
+      this.montoRetiro = this.efectivoContado;
+      this.calcularFondo();
+    }
+  }
+
+  // NUEVO: Calcula el retiro basado en cuánto quieres dejar de fondo
+  dejarFondo(montoObjetivo: number) {
+    if (this.efectivoContado === null) return;
+
+    // Si tengo 1000 y quiero dejar 200, retiro 800.
+    let retiro = this.efectivoContado - montoObjetivo;
+
+    // Seguridad: no retirar negativo (si tienes 100 y quieres dejar 200, retiras 0)
+    if (retiro < 0) retiro = 0;
+
+    this.montoRetiro = retiro;
+    this.calcularFondo();
+  }
+
+  async confirmarCorte() {
+    if (this.efectivoContado === null || this.efectivoContado < 0) {
+      this.notificationService.error('Ingresa cuánto dinero hay en caja');
+      return;
+    }
+
+    const retiro = this.montoRetiro || 0;
+    if (retiro < 0) {
+      this.notificationService.error('El retiro no puede ser negativo');
+      return;
+    }
+
+    if (this.fondoFinal < 0) {
+      this.notificationService.error('Estás retirando más dinero del que hay');
+      return;
+    }
+
+    const confirmar = confirm(`
+      ¿Cerrar caja del día?
+      
+      Contado: ${this.formatearMoneda(this.efectivoContado)}
+      Retiro: ${this.formatearMoneda(retiro)}
+      Fondo Mañana: ${this.formatearMoneda(this.fondoFinal)}
+      
+      Esta acción es irreversible.
+    `);
+
+    if (!confirmar) return;
 
     this.guardando = true;
-    const formValues = this.corteForm.value;
-
     try {
-      await this.corteService.guardarCorte({
-        ventasEfectivo: this.ventasEfectivo,
-        abonosEfectivo: this.abonosEfectivo,
-        totalSistema: this.totalSistema,
-        dineroReal: formValues.dineroReal,
-        diferencia: this.diferencia,
-        notas: formValues.notas,
+      await this.corteService.realizarCorte({
+        esperado: this.cajaHoy?.totalEfectivo || 0,
+        contado: this.efectivoContado,
+        retirado: retiro,
+        notas: this.notas,
       });
 
-      this.notificationService.success('Corte de caja guardado correctamente');
-      this.router.navigate(['/dashboard']); // Regresar al dashboard
+      this.notificationService.success('¡Corte de caja realizado con éxito!');
+      this.corteYaRealizado = true;
+
+      setTimeout(() => {
+        this.router.navigate(['/dashboard']);
+      }, 2500);
     } catch (error) {
+      console.error(error);
       this.notificationService.error('Error al guardar el corte');
     } finally {
       this.guardando = false;
     }
-  }
-
-  cancelar() {
-    this.router.navigate(['/dashboard']);
   }
 }

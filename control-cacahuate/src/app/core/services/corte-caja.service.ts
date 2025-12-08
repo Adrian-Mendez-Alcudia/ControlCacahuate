@@ -2,95 +2,95 @@ import { Injectable, inject } from '@angular/core';
 import {
   Firestore,
   collection,
-  addDoc,
-  query,
-  orderBy,
-  limit,
-  getDocs,
+  doc,
+  setDoc,
+  updateDoc,
   Timestamp,
-  where,
+  getDoc,
 } from '@angular/fire/firestore';
-import { VentasService } from './ventas.service';
-import { CajaDiaria } from '../models/interfaces';
-
-export interface CorteDeCaja {
-  id?: string;
-  fecha: Timestamp;
-  ventasEfectivo: number;
-  abonosEfectivo: number;
-  totalSistema: number; // Lo que el sistema dice que debe haber
-  dineroReal: number; // Lo que tú contaste
-  diferencia: number; // Sobrante o Faltante
-  notas?: string;
-  usuario?: string; // Por si luego tienes empleados
-}
+import { CorteDeCaja, CajaDiaria } from '../models/interfaces';
+import { obtenerFechaHoy, generarId } from '../utils/calculos.utils';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CorteCajaService {
   private firestore = inject(Firestore);
-  private ventasService = inject(VentasService);
-  private cortesCollection = collection(this.firestore, 'cortes_caja');
+
+  private cortesCollection = collection(this.firestore, 'cortes');
+  private cajaCollection = collection(this.firestore, 'cajaDiaria');
 
   /**
-   * Obtiene los datos actuales del día para pre-llenar el corte
+   * Realiza el proceso de corte de caja:
+   * 1. Guarda el registro en la colección 'cortes' (histórico).
+   * 2. Actualiza el documento de 'cajaDiaria' del día para marcarlo como cerrado.
    */
-  async obtenerResumenDelDia(): Promise<CajaDiaria | null> {
-    // Reutilizamos la lógica que ya tienes en VentasService para obtener la caja del día
-    // Nota: Como VentasService usa observables, aquí hacemos una promesa rápida
-    // Idealmente VentasService debería exponer un método asíncrono o snapshot
-    // Por simplicidad, asumimos que obtienes los datos frescos
+  async realizarCorte(datos: {
+    esperado: number;
+    contado: number;
+    retirado: number;
+    notas?: string;
+  }): Promise<void> {
+    const fechaHoy = obtenerFechaHoy();
+    const diferencia = datos.contado - datos.esperado;
+    const fondoManana = datos.contado - datos.retirado;
+    const idCorte = generarId();
 
-    // Una forma de hacerlo sin modificar VentasService es consultar directo
-    // Pero mejor creamos un método 'snapshot' en VentasService luego.
-    // Por ahora, simularemos obteniendo la caja del día actual
-    const hoy = new Date().toISOString().split('T')[0];
-    const q = query(
-      collection(this.firestore, 'cajas_diarias'),
-      where('fecha', '==', hoy),
-      limit(1)
-    );
-
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-
-    return snapshot.docs[0].data() as CajaDiaria;
-  }
-
-  /**
-   * Guarda el corte de caja en Firebase
-   */
-  async guardarCorte(
-    corte: Omit<CorteDeCaja, 'id' | 'fecha'>
-  ): Promise<string> {
-    const nuevoCorte = {
-      ...corte,
+    const corte: CorteDeCaja = {
+      id: idCorte,
       fecha: Timestamp.now(),
+      fechaDia: fechaHoy,
+      esperadoEnCaja: datos.esperado,
+      contadoEnCaja: datos.contado,
+      diferencia: diferencia,
+      montoRetirado: datos.retirado,
+      fondoCajaManana: fondoManana,
+      notas: datos.notas || '',
     };
 
-    const docRef = await addDoc(this.cortesCollection, nuevoCorte);
-    console.log('✅ Corte de caja guardado:', docRef.id);
-    return docRef.id;
+    // Referencia al día actual en caja
+    const cajaDiaRef = doc(this.cajaCollection, fechaHoy);
+
+    // Verificamos si existe el día antes de cerrar (por seguridad)
+    const cajaSnap = await getDoc(cajaDiaRef);
+    if (!cajaSnap.exists()) {
+      // Si no existe (ej. no hubo ventas), creamos el día vacío para poder cerrarlo
+      await setDoc(cajaDiaRef, {
+        fecha: fechaHoy,
+        efectivoVentas: 0,
+        efectivoAbonos: 0,
+        totalEfectivo: 0,
+        ventasFiado: 0,
+        costoVendido: 0,
+        corteRealizado: true,
+        datosCorte: corte,
+      });
+    } else {
+      // Actualizamos marcando como cerrado
+      await updateDoc(cajaDiaRef, {
+        corteRealizado: true,
+        datosCorte: corte,
+      });
+    }
+
+    // Guardar en histórico de cortes
+    await setDoc(doc(this.cortesCollection, idCorte), corte);
+
+    console.log('✅ Corte realizado con éxito');
   }
 
   /**
-   * Obtiene los últimos cortes para el historial
+   * Verifica si el día actual ya tiene corte
    */
-  async obtenerHistorialCortes(limite = 7): Promise<CorteDeCaja[]> {
-    const q = query(
-      this.cortesCollection,
-      orderBy('fecha', 'desc'),
-      limit(limite)
-    );
-    const snapshot = await getDocs(q);
+  async verificarSiHayCorteHoy(): Promise<boolean> {
+    const fechaHoy = obtenerFechaHoy();
+    const cajaRef = doc(this.cajaCollection, fechaHoy);
+    const snap = await getDoc(cajaRef);
 
-    return snapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as CorteDeCaja)
-    );
+    if (snap.exists()) {
+      const data = snap.data() as CajaDiaria;
+      return !!data.corteRealizado;
+    }
+    return false;
   }
 }

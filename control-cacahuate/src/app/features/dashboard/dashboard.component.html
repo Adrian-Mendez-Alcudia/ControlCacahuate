@@ -1,7 +1,7 @@
 <div class="dashboard-container">
   <header class="header">
     <div class="brand">
-      <h1>📊 Dashboard</h1>
+      <h1>📊 Centro de Comando</h1>
       <p class="subtitle">{{ nombreNegocio }}</p>
     </div>
     <!-- Fecha de hoy -->
@@ -168,7 +168,7 @@
     <div class="header-row">
       <h3>⚡ Eficiencia de Cocina</h3>
       <span class="badge-avg"
-        >{{ resumen.rendimientoPromedio }} bolsas/lote</span
+        >{{ resumen.rendimientoPromedio | number : "1.0-0" }} bolsas/lote</span
       >
     </div>
 
@@ -192,10 +192,10 @@
     } }
   </section>
 
-  <!-- ACCIÓN RÁPIDA -->
+  <!-- ACCIÓN RÁPIDA (BOTÓN HABILITADO) -->
   <div class="actions-area">
-    <button class="btn-corte" routerLink="/corte-caja" disabled>
-      <span class="icon">✂️</span> Realizar Corte de Caja (Próximamente)
+    <button class="btn-corte" routerLink="/corte-caja">
+      <span class="icon">✂️</span> Realizar Corte de Caja
     </button>
   </div>
 

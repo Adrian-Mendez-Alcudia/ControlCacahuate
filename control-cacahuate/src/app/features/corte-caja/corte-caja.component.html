@@ -1,85 +1,158 @@
 <div class="corte-container">
   <header class="header">
-    <h1>✂️ Corte de Caja</h1>
-    <p class="subtitle">Verifica el dinero del día</p>
+    <div class="brand">
+      <span class="icon">✂️</span>
+      <h1>Corte de Caja</h1>
+    </div>
+    <p class="subtitle">{{ fechaHoy | date : "EEEE d MMMM, y" }}</p>
   </header>
 
   @if (cargando) {
-  <div class="loading">Cargando datos del día...</div>
-  } @else {
-  <div class="resumen-card">
-    <h3>Resumen del Sistema</h3>
-
-    <div class="row">
-      <span>Ventas Efectivo:</span>
-      <span class="monto">{{ formatear(ventasEfectivo) }}</span>
-    </div>
-    <div class="row">
-      <span>Abonos Efectivo:</span>
-      <span class="monto">{{ formatear(abonosEfectivo) }}</span>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="row total">
-      <span>Debe haber en caja:</span>
-      <span class="monto-total">{{ formatear(totalSistema) }}</span>
-    </div>
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Consultando ventas del día...</p>
   </div>
+  } @else { @if (corteYaRealizado) {
+  <div class="mensaje-ya-realizado">
+    <div class="check-icon">✅</div>
+    <h3>Día Cerrado</h3>
+    <p>El corte de este día ya fue registrado.</p>
+    <button class="btn-back" routerLink="/dashboard">Volver al Inicio</button>
+  </div>
+  }
 
-  <form [formGroup]="corteForm" (ngSubmit)="realizarCorte()" class="corte-form">
-    <div class="form-group">
-      <label>¿Cuánto dinero contaste? (Real)</label>
-      <div class="input-prefix">
-        <span class="prefix">$</span>
+  <div class="corte-card" [class.bloqueado]="corteYaRealizado">
+    <!-- SECCIÓN 1: SISTEMA -->
+    <section class="info-sistema">
+      <div class="row-total">
+        <span class="label">Sistema Espera</span>
+        <span class="valor sistema">{{
+          formatearMoneda(cajaHoy?.totalEfectivo || 0)
+        }}</span>
+      </div>
+      <div class="desglose-mini">
+        <span
+          >Ventas Ef.: {{ formatearMoneda(cajaHoy?.efectivoVentas || 0) }}</span
+        >
+        <span>Abonos: {{ formatearMoneda(cajaHoy?.efectivoAbonos || 0) }}</span>
+      </div>
+    </section>
+
+    <div class="separador"></div>
+
+    <!-- SECCIÓN 2: CONTEO FÍSICO -->
+    <section class="input-section">
+      <label>1. ¿Cuánto dinero contaste?</label>
+      <div class="input-group">
+        <span class="symbol">$</span>
         <input
           type="number"
-          formControlName="dineroReal"
+          [(ngModel)]="efectivoContado"
+          (ngModelChange)="calcularDiferencia()"
           placeholder="0.00"
-          step="0.50"
+          [disabled]="corteYaRealizado"
+        />
+        <button
+          class="btn-action-mini"
+          (click)="igualarAlSistema()"
+          [disabled]="corteYaRealizado"
+        >
+          Igualar
+        </button>
+      </div>
+
+      @if (diferencia !== 0 && efectivoContado !== null) {
+      <div
+        class="alerta-diff"
+        [class.sobra]="diferencia > 0"
+        [class.falta]="diferencia < 0"
+      >
+        @if (diferencia > 0) { ⚠️ Sobran {{ formatearMoneda(diferencia) }} }
+        @else { 🚨 Faltan {{ formatearMoneda(diferencia) }}
+        }
+      </div>
+      }
+    </section>
+
+    <!-- SECCIÓN 3: RETIRO CON SUGERENCIAS -->
+    <section class="input-section">
+      <label>2. ¿Cuánto vas a retirar?</label>
+
+      <!-- SUGERENCIAS INTELIGENTES -->
+      @if (efectivoContado && efectivoContado > 0 && !corteYaRealizado) {
+      <div class="sugerencias-chips">
+        <span class="label-mini">Dejar en caja:</span>
+
+        <button
+          class="chip"
+          (click)="dejarFondo(0)"
+          [class.active]="fondoFinal === 0"
+        >
+          Nada (Retirar todo)
+        </button>
+
+        @if (efectivoContado >= 200) {
+        <button
+          class="chip"
+          (click)="dejarFondo(200)"
+          [class.active]="fondoFinal === 200"
+        >
+          $200
+        </button>
+        } @if (efectivoContado >= 500) {
+        <button
+          class="chip"
+          (click)="dejarFondo(500)"
+          [class.active]="fondoFinal === 500"
+        >
+          $500
+        </button>
+        }
+      </div>
+      }
+
+      <div class="input-group">
+        <span class="symbol">$</span>
+        <input
+          type="number"
+          [(ngModel)]="montoRetiro"
+          (ngModelChange)="calcularFondo()"
+          placeholder="0.00"
+          [disabled]="corteYaRealizado"
         />
       </div>
-    </div>
+      <p class="hint">Ganancia o depósito a banco</p>
+    </section>
 
-    <!-- Indicador de Diferencia -->
-    <div
-      class="diferencia-card"
-      [class.faltante]="diferencia < 0"
-      [class.sobrante]="diferencia > 0"
-      [class.exacto]="diferencia === 0"
-    >
-      <span class="label">Diferencia:</span>
-      <span class="valor">
-        @if (diferencia > 0) { + }
-        {{ formatear(diferencia) }}
-      </span>
-      <span class="estado">
-        @if (diferencia === 0) { ✅ Exacto } @else if (diferencia < 0) { ❌
-        Faltante } @else { ⚠️ Sobrante }
-      </span>
-    </div>
+    <!-- SECCIÓN 4: FONDO FINAL -->
+    <section class="resumen-final">
+      <div class="fila">
+        <span>Se queda en caja (Fondo):</span>
+        <span class="valor final">{{ formatearMoneda(fondoFinal) }}</span>
+      </div>
+    </section>
 
+    <!-- NOTAS -->
     <div class="form-group">
-      <label>Notas del corte (Opcional)</label>
+      <label>Notas</label>
       <textarea
-        formControlName="notas"
-        placeholder="Ej: Se tomó dinero para garrafón de agua..."
-        rows="3"
+        [(ngModel)]="notas"
+        rows="2"
+        placeholder="Ej: Dejé cambio en monedas..."
+        [disabled]="corteYaRealizado"
       ></textarea>
     </div>
 
-    <div class="acciones">
-      <button type="button" class="btn-cancelar" (click)="cancelar()">
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        class="btn-confirmar"
-        [disabled]="guardando || corteForm.invalid"
-      >
-        @if (guardando) { Guardando... } @else { 🔒 Cerrar Caja }
-      </button>
-    </div>
-  </form>
+    <!-- BOTÓN -->
+    @if (!corteYaRealizado) {
+    <button
+      class="btn-cerrar"
+      (click)="confirmarCorte()"
+      [disabled]="guardando || efectivoContado === null"
+    >
+      @if (guardando) { ⏳ Cerrando... } @else { 🔒 Cerrar Día }
+    </button>
+    }
+  </div>
   }
 </div>

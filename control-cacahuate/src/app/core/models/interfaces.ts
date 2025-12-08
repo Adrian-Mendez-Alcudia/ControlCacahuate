@@ -49,7 +49,7 @@ export interface Venta {
   tipoPago: 'efectivo' | 'fiado';
   clienteId?: string;
   fecha: Timestamp;
-  nombreSaborSnapshot?: string; // Opcional: para guardar el nombre del sabor en el momento de la venta
+  nombreSaborSnapshot?: string; // Para historial histórico
 }
 
 export interface Abono {
@@ -60,17 +60,8 @@ export interface Abono {
   notas?: string;
 }
 
-export interface CajaDiaria {
-  fecha: string;
-  efectivoVentas: number;
-  efectivoAbonos: number;
-  totalEfectivo: number;
-  ventasFiado: number;
-  costoVendido: number;
-}
-
 // ============================================
-// NUEVA INTERFAZ PARA ESTADO DE CUENTA
+// ESTADO DE CUENTA (EL QUE FALTABA)
 // ============================================
 export interface MovimientoCuenta {
   id: string;
@@ -78,11 +69,40 @@ export interface MovimientoCuenta {
   tipo: 'CARGO' | 'ABONO';
   descripcion: string;
   monto: number;
-  saldoAcumulado: number; // Saldo calculado después de este movimiento
+  saldoAcumulado: number;
 }
 
 // ============================================
-// CONFIGURACIÓN DEL NEGOCIO (EDITABLE)
+// CAJA Y CORTE
+// ============================================
+
+export interface CajaDiaria {
+  fecha: string; // ID del documento (YYYY-MM-DD)
+  efectivoVentas: number;
+  efectivoAbonos: number;
+  totalEfectivo: number;
+  ventasFiado: number;
+  costoVendido: number;
+
+  // Campos de corte
+  corteRealizado?: boolean;
+  datosCorte?: CorteDeCaja;
+}
+
+export interface CorteDeCaja {
+  id?: string;
+  fecha: Timestamp;
+  fechaDia: string; // YYYY-MM-DD
+  esperadoEnCaja: number;
+  contadoEnCaja: number;
+  diferencia: number;
+  montoRetirado: number;
+  fondoCajaManana: number;
+  notas?: string;
+}
+
+// ============================================
+// CONFIGURACIÓN Y CONSTANTES
 // ============================================
 
 export interface ConfiguracionNegocio {
@@ -93,34 +113,26 @@ export interface ConfiguracionNegocio {
   updatedAt: Timestamp;
 }
 
-// ============================================
-// COLORES PREDEFINIDOS PARA SELECTOR
-// ============================================
-
 export const COLORES_DISPONIBLES: string[] = [
-  '#EF4444', // Rojo
-  '#F59E0B', // Naranja
-  '#F97316', // Naranja oscuro
-  '#EAB308', // Amarillo
-  '#84CC16', // Lima
-  '#22C55E', // Verde
-  '#10B981', // Esmeralda
-  '#14B8A6', // Teal
-  '#06B6D4', // Cyan
-  '#0EA5E9', // Celeste
-  '#3B82F6', // Azul
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violeta
-  '#A855F7', // Púrpura
-  '#D946EF', // Fucsia
-  '#EC4899', // Rosa
-  '#F43F5E', // Rosa rojo
-  '#6B7280', // Gris
+  '#EF4444',
+  '#F59E0B',
+  '#F97316',
+  '#EAB308',
+  '#84CC16',
+  '#22C55E',
+  '#10B981',
+  '#14B8A6',
+  '#06B6D4',
+  '#0EA5E9',
+  '#3B82F6',
+  '#6366F1',
+  '#8B5CF6',
+  '#A855F7',
+  '#D946EF',
+  '#EC4899',
+  '#F43F5E',
+  '#6B7280',
 ];
-
-// ============================================
-// EMOJIS SUGERIDOS PARA SABORES
-// ============================================
 
 export const EMOJIS_SUGERIDOS: string[] = [
   '🥜',

@@ -1,15 +1,11 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router'; // Importante para el routerLink
+import { RouterModule } from '@angular/router';
 import { InventarioService } from '../../core/services/inventario.service';
 import { VentasService } from '../../core/services/ventas.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import {
-  Inventario,
-  LoteProduccion,
-  CajaDiaria,
-} from '../../core/models/interfaces';
+import { LoteProduccion } from '../../core/models/interfaces';
 import {
   formatearMoneda,
   calcularValorInventario,
@@ -23,8 +19,8 @@ interface ResumenDashboard {
   efectivoHoy: number;
   ventasTotalesHoy: number;
   costoVendidoHoy: number;
-  utilidadBrutaHoy: number; // (Efectivo + Fiado) - Costo
-  margenHoy: number; // Porcentaje
+  utilidadBrutaHoy: number;
+  margenHoy: number;
 
   // Desglose
   ventasEfectivoHoy: number;
@@ -54,13 +50,15 @@ export class DashboardComponent implements OnInit {
   private ventasService = inject(VentasService);
   private clientesService = inject(ClientesService);
   private configuracionService = inject(ConfiguracionService);
-  fechaHoy = new Date();
 
   resumen$!: Observable<ResumenDashboard>;
   lotes$!: Observable<LoteProduccion[]>;
   nombreNegocio = 'Control Cacahuate';
 
-  // Datos para gráfico de dona (calculados en el template o aquí)
+  // Variable de fecha real para evitar error de pipe
+  fechaHoy = new Date();
+
+  // Datos para gráfico de dona
   chartData = { inventario: 0, calle: 0 };
 
   ngOnInit() {
@@ -100,10 +98,10 @@ export class DashboardComponent implements OnInit {
         const ventasFiado = caja?.ventasFiado || 0;
         const costoVendido = caja?.costoVendido || 0;
 
-        // Flujo de Caja (Lo que tienes en la mano)
+        // Flujo de Caja
         const efectivoHoy = efectivoVentas + efectivoAbonos;
 
-        // Estado de Resultados (Lo que realmente vendiste y ganaste)
+        // Estado de Resultados
         const ventasTotalesHoy = efectivoVentas + ventasFiado;
         const utilidadBrutaHoy = ventasTotalesHoy - costoVendido;
 
@@ -112,7 +110,6 @@ export class DashboardComponent implements OnInit {
             ? (utilidadBrutaHoy / ventasTotalesHoy) * 100
             : 0;
 
-        // Para gráficos
         this.chartData = {
           inventario: valorInventario,
           calle: dineroEnCalle,
@@ -142,7 +139,6 @@ export class DashboardComponent implements OnInit {
     return formatearMoneda(valor);
   }
 
-  // Helpers para rendimiento
   getBestRendimiento(lotes: LoteProduccion[]): number {
     if (lotes.length === 0) return 0;
     return Math.max(...lotes.map((l) => l.bolsasResultantes));
@@ -153,10 +149,7 @@ export class DashboardComponent implements OnInit {
     return Math.min(...lotes.map((l) => l.bolsasResultantes));
   }
 
-  // Helper para gráfico de dona SVG
   getCircleDashArray(percentage: number): string {
-    // Circunferencia de radio 16 aprox = 100
-    // r=15.9155, C=2*pi*r ≈ 100
     return `${percentage}, 100`;
   }
 }
